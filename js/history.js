@@ -2,8 +2,9 @@
  * history.js — Game history table
  */
 
-let _filterGame  = "";
-let _filterCross = "";
+let _filterGame    = "";
+let _filterCross   = "";
+let _histSort = { col: "num", dir: -1 }; // default: newest # first
 
 function _isDeleted(name) {
   const active   = App.data.players || [];
@@ -24,8 +25,8 @@ function _playerTag(name) {
 function _gameTag(name) {
   const data = App.data;
   const inList = data.games.some(g => g.name === name);
-  const wasDeleted = (data.deletedGames || []).includes(name);
-  if (!inList && wasDeleted) return ` <span class="archived-badge deleted-badge">deleted</span>`;
+  const isArchived = (data.archivedGames || []).some(g => g.name === name);
+  if (!inList && isArchived) return ` <span class="archived-badge">archived</span>`;
   return "";
 }
 
@@ -33,26 +34,26 @@ function _crossTag(name) {
   if (name === "None") return "";
   const data = App.data;
   const inList = data.crossovers.some(c => c.name === name);
-  const wasDeleted = (data.deletedCrossovers || []).includes(name);
-  if (!inList && wasDeleted) return ` <span class="archived-badge deleted-badge">deleted</span>`;
+  const isArchived = (data.archivedCrossovers || []).some(c => c.name === name);
+  if (!inList && isArchived) return ` <span class="archived-badge">archived</span>`;
   return "";
 }
 
 function _cardTag(name, type) {
   const data = App.data;
   const inLib = data.knownCards.some(k => k.name === name && k.type === type);
-  const wasDeleted = (data.deletedCards || []).some(k => k.name === name && k.type === type);
-  if (!inLib && wasDeleted) return ` <span class="archived-badge deleted-badge">deleted</span>`;
+  const isArchived = (data.archivedCards || []).some(k => k.name === name && k.type === type);
+  if (!inLib && isArchived) return ` <span class="archived-badge">archived</span>`;
   return "";
 }
 
 function _oversizedTag(name, fromSet) {
   const data = App.data;
-  // "Promo" and "Other" are virtual sets, never deleted
+  // "Promo" and "Other" are virtual sets, never archived
   if (fromSet === "Promo" || fromSet === "Other") return "";
   const inLib = data.knownOversized.some(k => k.name === name && k.fromSet === fromSet);
-  const wasDeleted = (data.deletedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
-  if (!inLib && wasDeleted) return ` <span class="archived-badge deleted-badge">deleted</span>`;
+  const isArchived = (data.archivedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
+  if (!inLib && isArchived) return ` <span class="archived-badge">archived</span>`;
   return "";
 }
 
@@ -62,13 +63,24 @@ function renderHistory() {
   document.getElementById("filterCross").innerHTML = "<option value=''>All Crossovers</option>" + data.crossovers.map(c=>`<option value="${c.name}">${c.name}</option>`).join("");
   document.getElementById("filterGame").value  = _filterGame;
   document.getElementById("filterCross").value = _filterCross;
-
   const filtered = data.history
     .map((h,i)=>({h,i}))
     .filter(({h})=>{
       if (_filterGame  && h.game  !== _filterGame)  return false;
       if (_filterCross && h.cross !== _filterCross) return false;
       return true;
+    })
+    .sort((a, b) => {
+      const { col, dir } = _histSort;
+      if (col === "num")   return dir * ((a.h.gameNum ?? a.i) - (b.h.gameNum ?? b.i));
+      if (col === "date")  return dir * (dateSortKey(a.h.date) - dateSortKey(b.h.date));
+      if (col === "game")  return dir * a.h.game.localeCompare(b.h.game);
+      if (col === "cross") return dir * a.h.cross.localeCompare(b.h.cross);
+      if (col === "type") {
+        const typeOf = h => h.isCrisis ? "Crisis" : h.isRivals ? "Rivals" : "Normal";
+        return dir * typeOf(a.h).localeCompare(typeOf(b.h));
+      }
+      return 0;
     });
 
   const list = document.getElementById("historyList");
@@ -81,7 +93,11 @@ function renderHistory() {
   const table = document.createElement("table");
   table.className = "history-table";
   table.innerHTML = `<thead><tr>
-    <th>#</th><th>Date</th><th>Base Game</th><th>Crossover</th><th>Type</th>
+    <th class="sortable" onclick="sortHistoryBy('num')"># ${_histSortInd('num')}</th>
+    <th class="sortable" onclick="sortHistoryBy('date')">Date ${_histSortInd('date')}</th>
+    <th class="sortable" onclick="sortHistoryBy('game')">Base Game ${_histSortInd('game')}</th>
+    <th class="sortable" onclick="sortHistoryBy('cross')">Crossover ${_histSortInd('cross')}</th>
+    <th class="sortable" onclick="sortHistoryBy('type')">Type ${_histSortInd('type')}</th>
     <th>Players &amp; Oversized</th><th class="col-score">Score (VPs)</th><th class="col-nemesis">Nemesis Defeated</th><th>Result</th><th>Additional Cards</th><th>Actions</th>
   </tr></thead>`;
   const tbody = document.createElement("tbody");
@@ -138,16 +154,15 @@ function renderHistory() {
         }).join(" ")
       : "—";
 
-    // Display sequential position in date-sorted list (rowIdx+1), tooltip shows insertion order
-    const insertionNum = h.gameNum != null ? h.gameNum : (i+1);
-    const gameNum = `<span class="game-num-badge" title="Added as game #${insertionNum}">#${rowIdx+1}</span>`;
+    const insertionNum = h.gameNum != null ? h.gameNum : (i + 1);
+    const gameNum = `<span class="game-num-badge">#${insertionNum}</span>`;
 
     tr.innerHTML = `
       <td style="text-align:center;">${gameNum}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--text-muted);">${h.date}</td>
       <td>${h.game}${_gameTag(h.game)}</td>
       <td>${h.cross}${_crossTag(h.cross)}</td>
-      <td>${h.isCrisis?'<span class="badge-crisis">Crisis</span>':'<span class="badge-normal">Normal</span>'}</td>
+      <td>${h.isCrisis?'<span class="badge-crisis">Crisis</span>':h.isRivals?'<span class="badge-rivals">Rivals</span>':'<span class="badge-normal">Normal</span>'}</td>
       <td class="player-col">${playerCell}</td>
       <td class="col-score">${scoreCell}</td>
       <td class="col-nemesis">${nemesisCell}</td>
@@ -175,6 +190,17 @@ function applyHistoryFilter() {
   _filterGame  = document.getElementById("filterGame").value;
   _filterCross = document.getElementById("filterCross").value;
   renderHistory();
+}
+
+function sortHistoryBy(col) {
+  if (_histSort.col === col) _histSort.dir *= -1;
+  else { _histSort.col = col; _histSort.dir = (col === "num" || col === "date") ? -1 : 1; }
+  renderHistory();
+}
+
+function _histSortInd(col) {
+  if (_histSort.col !== col) return `<span class="sort-ind">↕</span>`;
+  return `<span class="sort-ind active">${_histSort.dir > 0 ? "↑" : "↓"}</span>`;
 }
 
 function _histConfirmDelete(btn, i) {

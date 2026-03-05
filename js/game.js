@@ -1,5 +1,5 @@
 /**
- * game.js — Add Game / Edit Game page
+ * game.js — Log Game / Edit Game page
  */
 
 const CARD_TYPES = ["Promo", "Other"];
@@ -54,6 +54,20 @@ function renderGameSetup() {
 function onBaseGameChange() {
   updateRivalsHint();
   updateAddPlayerBtn();
+  // Update set filter on existing rows that haven't chosen a card yet
+  const baseGame = document.getElementById("baseGameSelect")?.value || "";
+  const baseHasCards = baseGame && App.data.knownOversized.some(k => k.fromSet === baseGame);
+  document.querySelectorAll(".player-row").forEach(row => {
+    const cardSel = row.querySelector(".oversizedCard");
+    const setFilterSel = row.querySelector(".oversizedSetFilter");
+    if (!cardSel || !setFilterSel || cardSel.value) return; // skip rows with a card already chosen
+    if (baseHasCards && [...setFilterSel.options].some(o => o.value === baseGame)) {
+      setFilterSel.value = baseGame;
+    } else {
+      setFilterSel.value = "";
+    }
+    onOversizedSetFilterChange(setFilterSel);
+  });
 }
 
 function confirmNewBaseGame() {
@@ -261,8 +275,15 @@ function _appendPlayerRow(prefill) {
     div.dataset.oversizedName = typedName;
     div.dataset.oversizedFrom = typedFrom;
   } else {
-    // New row with no prefill — default to All Sets (empty filter)
-    setFilterSel.value = "";
+    // New row with no prefill — default set filter to base game if it has cards, else All Sets
+    const baseGame = document.getElementById("baseGameSelect")?.value || "";
+    const baseHasCards = baseGame && App.data.knownOversized.some(k => k.fromSet === baseGame);
+    if (baseHasCards && [...setFilterSel.options].some(o => o.value === baseGame)) {
+      setFilterSel.value = baseGame;
+      onOversizedSetFilterChange(setFilterSel);
+    } else {
+      setFilterSel.value = "";
+    }
   }
 
   _tintPlaceholders(div);
@@ -351,7 +372,7 @@ function refreshAllOversizedDropdowns() {
 
     const opts = _buildOversizedOptions(otherChosen, setFilter);
     cardSel.innerHTML = `
-      <option value="" disabled class="placeholder-opt">— Choose Card —</option>
+      <option value="" disabled selected class="placeholder-opt">— Choose Card —</option>
       ${deletedOpts.map(o => `<option value="${_esc(o.value)}" data-is-deleted="true" style="color:#ef4444;">${_esc(o.text)}</option>`).join("")}
       ${opts}
     `;
@@ -677,12 +698,13 @@ function saveGame() {
     return { name: n || "", fromSet: f || "" };
   }
 
+  const rivals = isRivalsMode();
   let entry;
   if (isCrisisMode()) {
     const teamWon     = document.getElementById("crisisWin").checked;
     const teamNemesis = parseInt(document.getElementById("crisisNemesis").value) || 0;
     const players = rows.map(r => { const ov = getOv(r); if (ov.name) _saveOversized(ov.name, ov.fromSet); return { name: r.querySelector(".pname").value, oversizedCard: ov.name, oversizedFrom: ov.fromSet }; });
-    entry = { gameNum, game: base, cross, isCrisis: true, teamWon, teamNemesis, players, additional, date, dateSort: dateSortKey(date) };
+    entry = { gameNum, game: base, cross, isCrisis: true, isRivals: false, teamWon, teamNemesis, players, additional, date, dateSort: dateSortKey(date) };
   } else {
     const players = rows.map(r => {
       const ov = getOv(r); if (ov.name) _saveOversized(ov.name, ov.fromSet);
@@ -698,7 +720,7 @@ function saveGame() {
       p.result = topCount > 1 && p.score === maxScore ? "Tie" : p.score === maxScore ? "Win" : "Loss";
       p.place  = place + 1;
     });
-    entry = { gameNum, game: base, cross, isCrisis: false, players, additional, date, dateSort: dateSortKey(date) };
+    entry = { gameNum, game: base, cross, isCrisis: false, isRivals: rivals, players, additional, date, dateSort: dateSortKey(date) };
   }
 
   data.history.push(entry);

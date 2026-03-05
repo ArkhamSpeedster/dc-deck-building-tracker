@@ -2,8 +2,8 @@
  * admin.js — Staged admin edits, edit-mode text fields
  */
 
-let _adminCardTypeFilter    = "";
-let _adminOversizedSetFilter = "Original Core Set (2012)";
+let _adminCardTypeFilter    = localStorage.getItem("dcAdminCardFilter")      || "";
+let _adminOversizedSetFilter = localStorage.getItem("dcAdminOversizedFilter") ?? "Original Core Set (2012)";
 
 /* ===== Init ===== */
 function initAdminDraft() {
@@ -36,6 +36,10 @@ function renderAdmin() {
   renderAdminCrossovers();
   renderAdminKnownCards();
   renderAdminKnownOversized();
+  renderAdminArchivedGames();
+  renderAdminArchivedCrossovers();
+  renderAdminArchivedCards();
+  renderAdminArchivedOversized();
 }
 
 /* ===== Inline warning helper ===== */
@@ -319,7 +323,7 @@ function renderAdminPlayers() {
       <button onclick="draftMovePlayer(${i},-1)" title="Up">↑</button>
       <button onclick="draftMovePlayer(${i}, 1)" title="Down">↓</button>
       <button class="secondary" onclick="_adminStartEdit(this,'players',${i})">Edit</button>
-      <button class="danger" onclick="_adminConfirmRemovePlayer(this, ${i})">Delete</button>
+      <button class="danger" onclick="_adminConfirmRemovePlayer(this, ${i})">Archive</button>
     `;
     pDiv.appendChild(row);
   });
@@ -340,9 +344,7 @@ function _adminConfirmRemovePlayer(btn, i) {
     _showInlineWarning(btn, `Can't remove — "${name}" is set as Default Slot 2.`);
     return;
   }
-  const inHistory = name && App.data.history.some(h => h.players.some(p => p.name === name));
-  const msg = inHistory ? `Archive "${name}"?` : `Delete "${name || "(blank)"}"?`;
-  _inlineConfirm(btn, msg, () => draftRemovePlayer(i));
+  _inlineConfirm(btn, `Archive "${name || "(blank)"}"?`, () => draftRemovePlayer(i));
 }
 
 function draftAddPlayer() {
@@ -362,12 +364,9 @@ function draftUpdatePlayerName(i, v) {
 function draftRemovePlayer(i) {
   if (App.adminDraft.players.length <= 2) { showToast("Minimum 2 players required.", "error"); return; }
   const name = App.adminDraft.players[i];
-  const inHistory = name && App.data.history.some(h => h.players.some(p => p.name === name));
-  if (inHistory) {
-    if (!App.data.archivedPlayers.some(a => (a.name || a) === name)) {
-      App.data.archivedPlayers.push({ name });
-      saveData();
-    }
+  if (name && !App.data.archivedPlayers.some(a => (a.name || a) === name)) {
+    App.data.archivedPlayers.push({ name });
+    saveData();
   }
   App.adminDraft.players.splice(i, 1);
   if (App._draftOrigins) App._draftOrigins.splice(i, 1);
@@ -406,7 +405,7 @@ function renderAdminDefaultSlots() {
 
   div.innerHTML = `
     <p style="color:var(--text-muted);font-size:13px;font-weight:600;margin:0 0 4px;">Default Players for New Games</p>
-    <p class="hint" style="margin:0 0 10px;">Who appears in slot 1 and 2 when opening the Add Game form.</p>
+    <p class="hint" style="margin:0 0 10px;">Who appears in slot 1 and 2 when opening the Log Game form.</p>
     <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
       <div style="display:flex;align-items:center;gap:8px;">
         <label style="font-size:13px;color:var(--text-muted);white-space:nowrap;">Slot 1:</label>
@@ -483,7 +482,7 @@ function renderAdminGames() {
           <input type="checkbox" ${g.isRivals?"checked":""} disabled onchange="draftUpdateGameRivals(${i},this.checked)"> Rivals
         </label>
         <button class="secondary" onclick="_adminStartEdit(this,'games',${i})">Edit</button>
-        <button class="danger" onclick="_adminConfirmRemoveGame(this, ${i})">Delete</button>
+        <button class="danger" onclick="_adminConfirmRemoveGame(this, ${i})">Archive</button>
       `;
     }
     gDiv.appendChild(row);
@@ -492,7 +491,7 @@ function renderAdminGames() {
 
 function _adminConfirmRemoveGame(btn, i) {
   if (App.adminDraft.games[i]?.name === "Original Core Set (2012)") { showToast("Cannot remove the default base game.", "error"); return; }
-  _inlineConfirm(btn, `Delete "${App.adminDraft.games[i]?.name}"?`, () => draftRemoveGame(i));
+  _inlineConfirm(btn, `Archive "${App.adminDraft.games[i]?.name}"?`, () => draftRemoveGame(i));
 }
 
 function draftAddBaseGame() {
@@ -512,12 +511,15 @@ function draftMoveGame(i, dir) {
 
 function draftRemoveGame(i) {
   if (App.adminDraft.games[i]?.name === "Original Core Set (2012)") { showToast("Cannot remove the default base game.", "error"); return; }
-  const name = App.adminDraft.games[i]?.name;
-  if (name) {
-    App.data.deletedGames = App.data.deletedGames || [];
-    if (!App.data.deletedGames.includes(name)) { App.data.deletedGames.push(name); saveData(); }
+  const g = App.adminDraft.games[i];
+  if (g && g.name) {
+    App.data.archivedGames = App.data.archivedGames || [];
+    if (!App.data.archivedGames.some(a => a.name === g.name)) {
+      App.data.archivedGames.push({ name: g.name, isRivals: g.isRivals || false });
+      saveData();
+    }
   }
-  App.adminDraft.games.splice(i, 1); markAdminDirty(); renderAdminGames();
+  App.adminDraft.games.splice(i, 1); markAdminDirty(); renderAdminGames(); renderAdminArchivedGames();
 }
 
 /* ===== Crossovers ===== */
@@ -541,7 +543,7 @@ function renderAdminCrossovers() {
           Crisis
         </label>
         <button class="secondary" onclick="_adminStartEdit(this,'crossovers',${i})">Edit</button>
-        <button class="danger" onclick="_adminConfirmRemoveCrossover(this, ${i})">Delete</button>
+        <button class="danger" onclick="_adminConfirmRemoveCrossover(this, ${i})">Archive</button>
       `;
     }
     cDiv.appendChild(row);
@@ -550,7 +552,7 @@ function renderAdminCrossovers() {
 
 function _adminConfirmRemoveCrossover(btn, i) {
   if (App.adminDraft.crossovers[i]?.name === "None") { showToast("Cannot remove None.", "error"); return; }
-  _inlineConfirm(btn, `Delete "${App.adminDraft.crossovers[i]?.name}"?`, () => draftRemoveCrossover(i));
+  _inlineConfirm(btn, `Archive "${App.adminDraft.crossovers[i]?.name}"?`, () => draftRemoveCrossover(i));
 }
 
 function draftAddCrossover() {
@@ -570,17 +572,21 @@ function draftMoveCrossover(i, dir) {
 
 function draftRemoveCrossover(i) {
   if (App.adminDraft.crossovers[i]?.name === "None") { showToast("Cannot remove None.", "error"); return; }
-  const name = App.adminDraft.crossovers[i]?.name;
-  if (name) {
-    App.data.deletedCrossovers = App.data.deletedCrossovers || [];
-    if (!App.data.deletedCrossovers.includes(name)) { App.data.deletedCrossovers.push(name); saveData(); }
+  const c = App.adminDraft.crossovers[i];
+  if (c && c.name) {
+    App.data.archivedCrossovers = App.data.archivedCrossovers || [];
+    if (!App.data.archivedCrossovers.some(a => a.name === c.name)) {
+      App.data.archivedCrossovers.push({ name: c.name, isCrisis: c.isCrisis || false });
+      saveData();
+    }
   }
-  App.adminDraft.crossovers.splice(i, 1); markAdminDirty(); renderAdminCrossovers();
+  App.adminDraft.crossovers.splice(i, 1); markAdminDirty(); renderAdminCrossovers(); renderAdminArchivedCrossovers();
 }
 
 /* ===== Known Additional Cards ===== */
 function _setAdminCardFilter(type) {
   _adminCardTypeFilter = type;
+  localStorage.setItem("dcAdminCardFilter", type);
   renderAdminKnownCards();
 }
 
@@ -633,7 +639,7 @@ function renderAdminKnownCards() {
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Type:</label>
       <select disabled onchange="draftUpdateKnownCardType(${origIdx},this.value); markAdminDirty();" class="${!c.type ? 'placeholder-selected' : ''}">${typeOpts}</select>
       <button class="secondary" onclick="_adminStartEdit(this,'cards',${origIdx})">Edit</button>
-      <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Delete</button>
+      <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Archive</button>
     `;
     cDiv.appendChild(row);
   });
@@ -641,7 +647,7 @@ function renderAdminKnownCards() {
 
 function _adminConfirmRemoveKnownCard(btn, i) {
   const name = App.adminDraft.knownCards[i]?.name || "(blank)";
-  _inlineConfirm(btn, `Delete "${name}"?`, () => draftRemoveKnownCard(i));
+  _inlineConfirm(btn, `Archive "${name}"?`, () => draftRemoveKnownCard(i));
 }
 
 function draftAddKnownCard() {
@@ -657,13 +663,13 @@ function draftUpdateKnownCardType(i, v) { App.adminDraft.knownCards[i].type = v;
 function draftRemoveKnownCard(i) {
   const c = App.adminDraft.knownCards[i];
   if (c && c.name) {
-    App.data.deletedCards = App.data.deletedCards || [];
-    if (!App.data.deletedCards.some(k => k.name === c.name && k.type === c.type)) {
-      App.data.deletedCards.push({ name: c.name, type: c.type });
+    App.data.archivedCards = App.data.archivedCards || [];
+    if (!App.data.archivedCards.some(k => k.name === c.name && k.type === c.type)) {
+      App.data.archivedCards.push({ name: c.name, type: c.type });
       saveData();
     }
   }
-  App.adminDraft.knownCards.splice(i, 1); markAdminDirty(); renderAdminKnownCards();
+  App.adminDraft.knownCards.splice(i, 1); markAdminDirty(); renderAdminKnownCards(); renderAdminArchivedCards();
 }
 
 /* ===== Known Oversized Cards ===== */
@@ -678,6 +684,7 @@ function _adminAllSets() {
 
 function _setAdminOversizedFilter(setName) {
   _adminOversizedSetFilter = setName;
+  localStorage.setItem("dcAdminOversizedFilter", setName);
   renderAdminKnownOversized();
 }
 
@@ -732,15 +739,19 @@ function renderAdminKnownOversized() {
       <select disabled onchange="draftUpdateOversizedSet(${origIdx},this.value); markAdminDirty();"
               class="${!c.fromSet ? "placeholder-selected" : ""}">${setOptsHtml}</select>
       <button class="secondary" onclick="_adminStartEdit(this,'oversized',${origIdx})">Edit</button>
-      <button class="danger" onclick="_adminConfirmRemoveOversized(this, ${origIdx})">Delete</button>
+      <button class="danger" onclick="_adminConfirmRemoveOversized(this, ${origIdx})">Archive</button>
     `;
     oDiv.appendChild(row);
   });
 }
 
 function _adminConfirmRemoveOversized(btn, i) {
+  if (App.adminDraft.knownOversized.length <= 2) {
+    _showInlineWarning(btn, "Minimum 2 oversized cards required.");
+    return;
+  }
   const name = App.adminDraft.knownOversized[i]?.name || "(blank)";
-  _inlineConfirm(btn, `Delete "${name}"?`, () => draftRemoveOversized(i));
+  _inlineConfirm(btn, `Archive "${name}"?`, () => draftRemoveOversized(i));
 }
 
 function draftAddOversized() {
@@ -754,15 +765,164 @@ function draftUpdateOversizedName(i, v) { App.adminDraft.knownOversized[i].name 
 function draftUpdateOversizedSet(i, v)  { App.adminDraft.knownOversized[i].fromSet = v; markAdminDirty(); }
 
 function draftRemoveOversized(i) {
+  if (App.adminDraft.knownOversized.length <= 2) return;
   const c = App.adminDraft.knownOversized[i];
   if (c && c.name) {
-    App.data.deletedOversized = App.data.deletedOversized || [];
-    if (!App.data.deletedOversized.some(k => k.name === c.name && k.fromSet === c.fromSet)) {
-      App.data.deletedOversized.push({ name: c.name, fromSet: c.fromSet });
+    App.data.archivedOversized = App.data.archivedOversized || [];
+    if (!App.data.archivedOversized.some(k => k.name === c.name && k.fromSet === c.fromSet)) {
+      App.data.archivedOversized.push({ name: c.name, fromSet: c.fromSet });
       saveData();
     }
   }
-  App.adminDraft.knownOversized.splice(i, 1); markAdminDirty(); renderAdminKnownOversized();
+  App.adminDraft.knownOversized.splice(i, 1); markAdminDirty(); renderAdminKnownOversized(); renderAdminArchivedOversized();
+}
+
+/* ===== Archived Base Games ===== */
+function renderAdminArchivedGames() {
+  const div = document.getElementById("adminArchivedGames");
+  if (!div) return;
+  div.innerHTML = "";
+  const archived = App.data.archivedGames || [];
+  if (!archived.length) {
+    div.innerHTML = `<p style="color:var(--text-dim);font-size:13px;margin-top:8px;">No archived base games.</p>`;
+    return;
+  }
+  archived.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "admin-row";
+    const alreadyActive = App.adminDraft.games.some(g => g.name === entry.name);
+    row.innerHTML = `
+      <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
+      ${entry.isRivals ? `<span class="admin-lock-badge">Rivals</span>` : ""}
+      <span class="archived-badge">archived</span>
+      ${alreadyActive
+        ? `<span style="font-size:12px;color:var(--text-dim);">Already active</span>`
+        : `<button class="primary" onclick="unarchiveGame(${i})">↩ Restore</button>`}
+    `;
+    div.appendChild(row);
+  });
+}
+
+function unarchiveGame(i) {
+  const entry = App.data.archivedGames[i];
+  if (!entry) return;
+  if (App.adminDraft.games.some(g => g.name === entry.name)) { showToast(`"${entry.name}" is already active.`, "error"); return; }
+  App.data.archivedGames.splice(i, 1);
+  saveData();
+  App.adminDraft.games.push({ name: entry.name, isRivals: entry.isRivals || false });
+  markAdminDirty(); renderAdminGames(); renderAdminArchivedGames();
+}
+
+/* ===== Archived Crossovers ===== */
+function renderAdminArchivedCrossovers() {
+  const div = document.getElementById("adminArchivedCrossovers");
+  if (!div) return;
+  div.innerHTML = "";
+  const archived = App.data.archivedCrossovers || [];
+  if (!archived.length) {
+    div.innerHTML = `<p style="color:var(--text-dim);font-size:13px;margin-top:8px;">No archived crossovers.</p>`;
+    return;
+  }
+  archived.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "admin-row";
+    const alreadyActive = App.adminDraft.crossovers.some(c => c.name === entry.name);
+    row.innerHTML = `
+      <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
+      ${entry.isCrisis ? `<span class="admin-lock-badge">Crisis</span>` : ""}
+      <span class="archived-badge">archived</span>
+      ${alreadyActive
+        ? `<span style="font-size:12px;color:var(--text-dim);">Already active</span>`
+        : `<button class="primary" onclick="unarchiveCrossover(${i})">↩ Restore</button>`}
+    `;
+    div.appendChild(row);
+  });
+}
+
+function unarchiveCrossover(i) {
+  const entry = App.data.archivedCrossovers[i];
+  if (!entry) return;
+  if (App.adminDraft.crossovers.some(c => c.name === entry.name)) { showToast(`"${entry.name}" is already active.`, "error"); return; }
+  App.data.archivedCrossovers.splice(i, 1);
+  saveData();
+  App.adminDraft.crossovers.push({ name: entry.name, isCrisis: entry.isCrisis || false });
+  markAdminDirty(); renderAdminCrossovers(); renderAdminArchivedCrossovers();
+}
+
+/* ===== Archived Additional Cards ===== */
+function renderAdminArchivedCards() {
+  const div = document.getElementById("adminArchivedCards");
+  if (!div) return;
+  div.innerHTML = "";
+  const archived = App.data.archivedCards || [];
+  if (!archived.length) {
+    div.innerHTML = `<p style="color:var(--text-dim);font-size:13px;margin-top:8px;">No archived additional cards.</p>`;
+    return;
+  }
+  archived.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "admin-row";
+    const alreadyActive = App.adminDraft.knownCards.some(k => k.name === entry.name && k.type === entry.type);
+    row.innerHTML = `
+      <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
+      <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.type || "")}</span>
+      <span class="archived-badge">archived</span>
+      ${alreadyActive
+        ? `<span style="font-size:12px;color:var(--text-dim);">Already active</span>`
+        : `<button class="primary" onclick="unarchiveCard(${i})">↩ Restore</button>`}
+    `;
+    div.appendChild(row);
+  });
+}
+
+function unarchiveCard(i) {
+  const entry = App.data.archivedCards[i];
+  if (!entry) return;
+  if (App.adminDraft.knownCards.some(k => k.name === entry.name && k.type === entry.type)) {
+    showToast(`"${entry.name}" is already active.`, "error"); return;
+  }
+  App.data.archivedCards.splice(i, 1);
+  saveData();
+  App.adminDraft.knownCards.push({ name: entry.name, type: entry.type });
+  markAdminDirty(); renderAdminKnownCards(); renderAdminArchivedCards();
+}
+
+/* ===== Archived Oversized Cards ===== */
+function renderAdminArchivedOversized() {
+  const div = document.getElementById("adminArchivedOversized");
+  if (!div) return;
+  div.innerHTML = "";
+  const archived = App.data.archivedOversized || [];
+  if (!archived.length) {
+    div.innerHTML = `<p style="color:var(--text-dim);font-size:13px;margin-top:8px;">No archived oversized cards.</p>`;
+    return;
+  }
+  archived.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "admin-row";
+    const alreadyActive = App.adminDraft.knownOversized.some(k => k.name === entry.name && k.fromSet === entry.fromSet);
+    row.innerHTML = `
+      <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
+      <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.fromSet || "")}</span>
+      <span class="archived-badge">archived</span>
+      ${alreadyActive
+        ? `<span style="font-size:12px;color:var(--text-dim);">Already active</span>`
+        : `<button class="primary" onclick="unarchiveOversized(${i})">↩ Restore</button>`}
+    `;
+    div.appendChild(row);
+  });
+}
+
+function unarchiveOversized(i) {
+  const entry = App.data.archivedOversized[i];
+  if (!entry) return;
+  if (App.adminDraft.knownOversized.some(k => k.name === entry.name && k.fromSet === entry.fromSet)) {
+    showToast(`"${entry.name}" is already active.`, "error"); return;
+  }
+  App.data.archivedOversized.splice(i, 1);
+  saveData();
+  App.adminDraft.knownOversized.push({ name: entry.name, fromSet: entry.fromSet });
+  markAdminDirty(); renderAdminKnownOversized(); renderAdminArchivedOversized();
 }
 
 /* ===== Utility ===== */

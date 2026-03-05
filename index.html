@@ -31,7 +31,7 @@
   </div>
   <div class="drawer-nav">
     <button class="nav-btn" onclick="showPage('homePage')">🏠 Home</button>
-    <button class="nav-btn" onclick="showPage('gamePage')">🎮 Add Game</button>
+    <button class="nav-btn" onclick="showPage('gamePage')">🎲 Log Game</button>
     <button class="nav-btn" onclick="showPage('historyPage')">📜 Game History</button>
     <button class="nav-btn" onclick="showPage('statsPage')">📊 Game Stats</button>
     <button class="nav-btn" onclick="showPage('adminPage')">⚙️ Settings</button>
@@ -48,7 +48,7 @@
     <!-- Quick nav sits right under the hero tagline -->
     <div class="home-nav-grid">
       <button class="home-nav-card" onclick="showPage('gamePage')">
-        <span class="home-nav-icon">🎮</span><span class="home-nav-label">Add Game</span>
+        <span class="home-nav-icon">🎲</span><span class="home-nav-label">Log Game</span>
       </button>
       <button class="home-nav-card" onclick="showPage('historyPage')">
         <span class="home-nav-icon">📜</span><span class="home-nav-label">Game History</span>
@@ -74,15 +74,15 @@
   <div class="home-about card">
     <h3>How to use it</h3>
     <p><strong>First time?</strong> Go to <strong>⚙️ Settings</strong> and set up your player names. You can add base games, crossovers, and oversized cards there too. Batman and Superman are included by default to get you started.</p>
-    <p style="margin-top:8px;">Then head to <strong>🎮 Add Game</strong> to log each session. Select your base game, crossover, date, players, and oversized cards — the app handles the rest.</p>
+    <p style="margin-top:8px;">Then head to <strong>🎲 Log Game</strong> to log each session. Select your base game, crossover, date, players, and oversized cards — the app handles the rest.</p>
   </div>
 </main>
 
-<!-- ===== Add Game Page ===== -->
+<!-- ===== Log Game Page ===== -->
 <main class="page" id="gamePage">
   <div class="page-header-row">
-    <div class="page-header">🎮 Add Game</div>
-    <div class="page-mini-nav"><button class="page-mini-btn page-mini-active" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+    <div class="page-header">🎲 Log Game</div>
+    <div class="page-mini-nav"><button class="page-mini-btn page-mini-active" onclick="showPage('gamePage')">🎲 Log Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
   </div>
 
   <!-- Save success banner -->
@@ -160,7 +160,7 @@
 <main class="page" id="historyPage">
   <div class="page-header-row">
     <div class="page-header">📜 Game History</div>
-    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn page-mini-active" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎲 Log Game</button><button class="page-mini-btn page-mini-active" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
   </div>
   <div class="card">
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
@@ -177,7 +177,7 @@
 <main class="page" id="statsPage">
   <div class="page-header-row">
     <div class="page-header">📊 Game Stats</div>
-    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn page-mini-active" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎲 Log Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn page-mini-active" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
   </div>
 
   <div class="card collapsible-card">
@@ -231,7 +231,7 @@
 <main class="page" id="adminPage">
   <div class="page-header-row">
     <div class="page-header">⚙️ Settings</div>
-    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn page-mini-active" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎲 Log Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn page-mini-active" onclick="showPage('adminPage')">⚙️ Settings</button></div>
   </div>
 
   <div class="admin-save-bar">
@@ -244,20 +244,10 @@
       <h3 style="margin:0;">Active Players</h3><span id="adminPlayersChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminPlayersBody">
-      <p class="hint" style="margin-top:10px;">Your player roster — these names appear in the Add Game form. Min 2, max 5 players. Use the arrows to reorder.</p>
+      <p class="hint" style="margin-top:10px;">Your player roster — these names appear in the Log Game form. Min 2, max 5 players. Use the arrows to reorder.</p>
       <div id="adminPlayers" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddPlayer()">+ Add Player</button>
       <div id="adminDefaultSlots" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);"></div>
-    </div>
-  </div>
-
-  <div class="card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('adminArchivedBody','adminArchivedChev')">
-      <h3 style="margin:0;">Archived Players</h3><span id="adminArchivedChev">▼</span>
-    </div>
-    <div class="collapsible-body" id="adminArchivedBody">
-      <p class="hint" style="margin-top:10px;">Players removed from the active roster who still appear in your game history. Restore them to make them selectable again in new games.</p>
-      <div id="adminArchivedPlayers"></div>
     </div>
   </div>
 
@@ -288,7 +278,7 @@
       <h3 style="margin:0;">Saved Additional Cards</h3><span id="adminCardsChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminCardsBody">
-      <p class="hint" style="margin-top:10px;">Promo cards and other extras that can be added to a game session via the Add Game screen. <strong>Name</strong> = the card's name (e.g. "Batman Ninja"). <strong>Type</strong>: Promo = official promotional hero cards; Other = any other extra card.</p>
+      <p class="hint" style="margin-top:10px;">Promo cards and other extras that can be added to a game session via the Log Game screen. <strong>Name</strong> = the card's name (e.g. "Batman Ninja"). <strong>Type</strong>: Promo = official promotional hero cards; Other = any other extra card.</p>
       <div id="adminKnownCards" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddKnownCard()">+ Add Card</button>
     </div>
@@ -299,9 +289,59 @@
       <h3 style="margin:0;">Saved Oversized Cards</h3><span id="adminOversizedChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminOversizedBody">
-      <p class="hint" style="margin-top:10px;">The large hero or villain cards each player selects at the start of a game. Each card must be assigned to the set it came from so it can be filtered in the Add Game screen.</p>
+      <p class="hint" style="margin-top:10px;">The large hero or villain cards each player selects at the start of a game. Each card must be assigned to the set it came from so it can be filtered in the Log Game screen.</p>
       <div id="adminKnownOversized" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddOversized()">+ Add Oversized Card</button>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminArchivedBody','adminArchivedChev')">
+      <h3 style="margin:0;">Archived Players</h3><span id="adminArchivedChev">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="adminArchivedBody">
+      <p class="hint" style="margin-top:10px;">Players removed from the active roster who still appear in your game history. Restore them to make them selectable again in new games.</p>
+      <div id="adminArchivedPlayers"></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminArchivedGamesBody','adminArchivedGamesChev')">
+      <h3 style="margin:0;">Archived Base Games</h3><span id="adminArchivedGamesChev">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="adminArchivedGamesBody">
+      <p class="hint" style="margin-top:10px;">Base games removed from the active list. Restoring adds them back to the Base Games section without affecting game history.</p>
+      <div id="adminArchivedGames"></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminArchivedCrossBody','adminArchivedCrossChev')">
+      <h3 style="margin:0;">Archived Crossovers</h3><span id="adminArchivedCrossChev">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="adminArchivedCrossBody">
+      <p class="hint" style="margin-top:10px;">Crossovers removed from the active list. Restoring adds them back to the Crossovers section without affecting game history.</p>
+      <div id="adminArchivedCrossovers"></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminArchivedCardsBody','adminArchivedCardsChev')">
+      <h3 style="margin:0;">Archived Additional Cards</h3><span id="adminArchivedCardsChev">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="adminArchivedCardsBody">
+      <p class="hint" style="margin-top:10px;">Additional cards removed from the library. Restoring adds them back to the Saved Additional Cards section.</p>
+      <div id="adminArchivedCards"></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminArchivedOversizedBody','adminArchivedOversizedChev')">
+      <h3 style="margin:0;">Archived Oversized Cards</h3><span id="adminArchivedOversizedChev">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="adminArchivedOversizedBody">
+      <p class="hint" style="margin-top:10px;">Oversized cards removed from the library. Restoring adds them back to the Saved Oversized Cards section.</p>
+      <div id="adminArchivedOversized"></div>
     </div>
   </div>
 

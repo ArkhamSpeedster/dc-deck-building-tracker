@@ -28,10 +28,10 @@ const DEFAULT_DATA = {
     { name: "Superman", fromSet: "Original Core Set (2012)" },
   ],
   archivedPlayers:  [],
-  deletedGames:     [],
-  deletedCrossovers:[],
-  deletedCards:     [],
-  deletedOversized: [],
+  archivedGames:     [],
+  archivedCrossovers:[],
+  archivedCards:     [],
+  archivedOversized: [],
   history:          [],
   nextGameNum:      1,
   renames:          [],
@@ -53,25 +53,35 @@ function _migrateBaseGame(d) {
       });
     });
   }
+  if (d.archivedGames) d.archivedGames.forEach(g => { if (g.name === OLD) g.name = NEW; });
   if (d.deletedGames) d.deletedGames = d.deletedGames.map(n => n === OLD ? NEW : n);
   return d;
 }
 
 function _normalise(d) {
-  if (!d.knownCards)        d.knownCards        = [];
-  if (!d.knownOversized)    d.knownOversized     = [];
-  if (!d.archivedPlayers)   d.archivedPlayers    = [];
-  if (!d.renames)           d.renames            = [];
-  if (!d.deletedGames)      d.deletedGames       = [];
-  if (!d.deletedCrossovers) d.deletedCrossovers  = [];
-  if (!d.deletedCards)      d.deletedCards       = [];
-  if (!d.deletedOversized)  d.deletedOversized   = [];
+  if (!d.knownCards)          d.knownCards          = [];
+  if (!d.knownOversized)      d.knownOversized      = [];
+  if (!d.archivedPlayers)     d.archivedPlayers     = [];
+  if (!d.renames)             d.renames             = [];
+  // Migrate old deleted* arrays → archived* objects
+  if (d.deletedGames)      { d.archivedGames      = (d.archivedGames||[]).concat((d.deletedGames||[]).map(n=>({name:n,isRivals:false}))); delete d.deletedGames; }
+  if (d.deletedCrossovers) { d.archivedCrossovers = (d.archivedCrossovers||[]).concat((d.deletedCrossovers||[]).map(n=>({name:n,isCrisis:false}))); delete d.deletedCrossovers; }
+  if (d.deletedCards)      { d.archivedCards      = (d.archivedCards||[]).concat(d.deletedCards||[]); delete d.deletedCards; }
+  if (d.deletedOversized)  { d.archivedOversized  = (d.archivedOversized||[]).concat(d.deletedOversized||[]); delete d.deletedOversized; }
+  if (!d.archivedGames)       d.archivedGames       = [];
+  if (!d.archivedCrossovers)  d.archivedCrossovers  = [];
+  if (!d.archivedCards)       d.archivedCards       = [];
+  if (!d.archivedOversized)   d.archivedOversized   = [];
   if (d.nextGameNum == null) d.nextGameNum = (d.history.length || 0) + 1;
   if (d.defaultSlot1 === undefined) d.defaultSlot1 = null;
   if (d.defaultSlot2 === undefined) d.defaultSlot2 = null;
   if (d.games) d.games.forEach(g => { delete g.isCrisis; if (g.isRivals === undefined) g.isRivals = false; });
   d.archivedPlayers = d.archivedPlayers.map(a => typeof a === "string" ? { name: a } : a);
-  d.history.forEach((h, i) => { if (!h.gameNum) h.gameNum = i + 1; });
+  d.history.forEach((h, i) => {
+    if (!h.gameNum) h.gameNum = i + 1;
+    if (h.isRivals === undefined)
+      h.isRivals = !h.isCrisis && ((d.games || []).find(g => g.name === h.game)?.isRivals || false);
+  });
 
   // Migrate "Base Game" to "Original Core Set (2012)"
   _migrateBaseGame(d);
@@ -177,8 +187,8 @@ function dateSortKey(dateStr) {
   return v ? parseInt(v.replace(/-/g, ""), 10) : 0;
 }
 
-/* ===== Deleted-list cleanup ===== */
-function restoreDeletedGame(name)             { App.data.deletedGames      = (App.data.deletedGames      || []).filter(n => n !== name); }
-function restoreDeletedCrossover(name)        { App.data.deletedCrossovers = (App.data.deletedCrossovers || []).filter(n => n !== name); }
-function restoreDeletedCard(name, type)       { App.data.deletedCards      = (App.data.deletedCards      || []).filter(k => !(k.name === name && k.type === type)); }
-function restoreDeletedOversized(name, fromSet){ App.data.deletedOversized  = (App.data.deletedOversized  || []).filter(k => !(k.name === name && k.fromSet === fromSet)); }
+/* ===== Archived-list cleanup ===== */
+function restoreDeletedGame(name)             { App.data.archivedGames      = (App.data.archivedGames      || []).filter(g => g.name !== name); }
+function restoreDeletedCrossover(name)        { App.data.archivedCrossovers = (App.data.archivedCrossovers || []).filter(c => c.name !== name); }
+function restoreDeletedCard(name, type)       { App.data.archivedCards      = (App.data.archivedCards      || []).filter(k => !(k.name === name && k.type === type)); }
+function restoreDeletedOversized(name, fromSet){ App.data.archivedOversized  = (App.data.archivedOversized  || []).filter(k => !(k.name === name && k.fromSet === fromSet)); }

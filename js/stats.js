@@ -9,8 +9,6 @@ let chartGameInstance   = null;
 let _sortGame   = { col: "name",  dir: 1  };
 let _sortCross  = { col: "name",  dir: 1  };
 let _sortCrisis = { col: "name",  dir: 1  };
-let _sortOver   = { col: "count", dir: -1 }; // default: most-used first
-
 function _toggleSort(state, col) {
   if (state.col === col) state.dir *= -1;
   else { state.col = col; state.dir = 1; }
@@ -19,7 +17,6 @@ function _toggleSort(state, col) {
 function sortGameBy(col)   { _toggleSort(_sortGame,   col); }
 function sortCrossBy(col)  { _toggleSort(_sortCross,  col); }
 function sortCrisisBy(col) { _toggleSort(_sortCrisis, col); }
-function sortOverBy(col)   { _toggleSort(_sortOver,   col); }
 
 function _sortInd(state, col) {
   if (state.col !== col) return `<span class="sort-ind">↕</span>`;
@@ -32,23 +29,23 @@ function renderStats() {
   renderArchivedStats();
 }
 
-/* ===== Deleted/archived tag helpers for stats ===== */
+/* ===== Archived tag helpers for stats ===== */
 function _sGameTag(name) {
-  const inList     = App.data.games.some(g => g.name === name);
-  const wasDeleted = (App.data.deletedGames || []).includes(name);
-  return (!inList && wasDeleted) ? ` <span class="archived-badge deleted-badge">deleted</span>` : "";
+  const inList    = App.data.games.some(g => g.name === name);
+  const isArchived = (App.data.archivedGames || []).some(g => g.name === name);
+  return (!inList && isArchived) ? ` <span class="archived-badge">archived</span>` : "";
 }
 function _sCrossTag(name) {
   if (name === "None") return "";
-  const inList     = App.data.crossovers.some(c => c.name === name);
-  const wasDeleted = (App.data.deletedCrossovers || []).includes(name);
-  return (!inList && wasDeleted) ? ` <span class="archived-badge deleted-badge">deleted</span>` : "";
+  const inList    = App.data.crossovers.some(c => c.name === name);
+  const isArchived = (App.data.archivedCrossovers || []).some(c => c.name === name);
+  return (!inList && isArchived) ? ` <span class="archived-badge">archived</span>` : "";
 }
 function _sOversizedTag(name, fromSet) {
   if (fromSet === "Promo" || fromSet === "Other") return "";
-  const inLib      = App.data.knownOversized.some(k => k.name === name && k.fromSet === fromSet);
-  const wasDeleted = (App.data.deletedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
-  return (!inLib && wasDeleted) ? ` <span class="archived-badge deleted-badge">deleted</span>` : "";
+  const inLib     = App.data.knownOversized.some(k => k.name === name && k.fromSet === fromSet);
+  const isArchived = (App.data.archivedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
+  return (!inLib && isArchived) ? ` <span class="archived-badge">archived</span>` : "";
 }
 
 function statCard(value, label, color) {
@@ -58,6 +55,7 @@ function statCard(value, label, color) {
 
 function calcPlayerStats(playerName) {
   let wins=0,losses=0,ties=0,totalScore=0,totalNemesis=0,normalGames=0;
+  let rivalsGames=0,rivalsWins=0,rivalsLosses=0,rivalsTies=0,rivalsTotalScore=0,rivalsTotalNemesis=0;
   let crisisPlayed=0,crisisWins=0,crisisLosses=0;
   const oversizedCount = {};
   const placements = {}; // {2:n, 3:n, 4:n, 5:n}
@@ -68,6 +66,13 @@ function calcPlayerStats(playerName) {
       if (h.isCrisis) {
         crisisPlayed++;
         if (h.teamWon) crisisWins++; else crisisLosses++;
+      } else if (h.isRivals) {
+        rivalsGames++;
+        rivalsTotalScore   += p.score   || 0;
+        rivalsTotalNemesis += p.nemesis || 0;
+        if      (p.result==="Win")  rivalsWins++;
+        else if (p.result==="Loss") rivalsLosses++;
+        else if (p.result==="Tie")  rivalsTies++;
       } else {
         normalGames++;
         totalScore   += p.score   || 0;
@@ -81,13 +86,20 @@ function calcPlayerStats(playerName) {
     });
   });
 
-  return {wins,losses,ties,totalScore,totalNemesis,normalGames,crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements};
+  return {wins,losses,ties,totalScore,totalNemesis,normalGames,
+          rivalsGames,rivalsWins,rivalsLosses,rivalsTies,rivalsTotalScore,rivalsTotalNemesis,
+          crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements};
 }
 
 function buildPlayerSummaryHTML(stats) {
-  const {wins,losses,ties,totalScore,totalNemesis,normalGames,crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements} = stats;
+  const {wins,losses,ties,totalScore,totalNemesis,normalGames,
+         rivalsGames,rivalsWins,rivalsLosses,rivalsTies,rivalsTotalScore,rivalsTotalNemesis,
+         crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements} = stats;
+  const totalAll   = normalGames+rivalsGames+crisisPlayed;
   const avgScore   = normalGames>0 ? (totalScore/normalGames).toFixed(1) : "—";
   const avgNemesis = normalGames>0 ? (totalNemesis/normalGames).toFixed(1) : "—";
+  const rivalsAvgScore   = rivalsGames>0 ? (rivalsTotalScore/rivalsGames).toFixed(1) : "—";
+  const rivalsAvgNemesis = rivalsGames>0 ? (rivalsTotalNemesis/rivalsGames).toFixed(1) : "—";
   const topCards   = Object.entries(oversizedCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   const placementHtml = Object.entries(placements).sort((a,b)=>a[0]-b[0])
@@ -96,7 +108,7 @@ function buildPlayerSummaryHTML(stats) {
   return `
     <h4 class="stats-section-label">Normal Games</h4>
     <div class="stats-grid">
-      ${statCard(normalGames+crisisPlayed,"Total Games")}
+      ${statCard(totalAll,"Total Games")}
       ${statCard(normalGames,"Normal Games")}
       ${statCard(wins,"Wins","#22c55e")}
       ${statCard(losses,"Losses","#ef4444")}
@@ -106,6 +118,15 @@ function buildPlayerSummaryHTML(stats) {
       ${statCard(avgNemesis,"Avg Nemesis Defeated")}
     </div>
     ${placementHtml ? `<div style="margin-top:10px;"><strong style="font-size:13px;">Placements (Loss):</strong> ${placementHtml}</div>` : ""}
+    <h4 class="stats-section-label" style="margin-top:16px;">Rivals Games <span class="badge-rivals" style="vertical-align:middle;">1v1</span></h4>
+    <div class="stats-grid">
+      ${statCard(rivalsGames,"Played")}
+      ${statCard(rivalsWins,"Wins","#22c55e")}
+      ${statCard(rivalsLosses,"Losses","#ef4444")}
+      ${statCard(rivalsTies,"Ties","#facc15")}
+      ${statCard(rivalsAvgScore,"Avg Score (VPs)")}
+      ${statCard(rivalsAvgNemesis,"Avg Nemesis Defeated")}
+    </div>
     <h4 class="stats-section-label" style="margin-top:16px;">Crisis Games</h4>
     <div class="stats-grid">
       ${statCard(crisisPlayed,"Played")}
@@ -187,9 +208,9 @@ function renderPlayerStats() {
     if (chartPlayerInstance) { chartPlayerInstance.destroy(); chartPlayerInstance=null; }
     chartPlayerInstance = new Chart(document.getElementById("statsChart"), {
       type:"bar",
-      data:{ labels:["Wins","Losses","Ties","Crisis W","Crisis L"],
-        datasets:[{ data:[stats.wins,stats.losses,stats.ties,stats.crisisWins,stats.crisisLosses],
-          backgroundColor:["#22c55e","#ef4444","#facc15","#34d399","#f87171"], borderRadius:4 }] },
+      data:{ labels:["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L"],
+        datasets:[{ data:[stats.wins,stats.losses,stats.ties,stats.rivalsWins,stats.rivalsLosses,stats.crisisWins,stats.crisisLosses],
+          backgroundColor:["#22c55e","#ef4444","#facc15","#a78bfa","#c084fc","#34d399","#f87171"], borderRadius:4 }] },
       options:_smallChartOpts(cc, false),
     });
   }
@@ -200,7 +221,7 @@ function _renderCompare(p1, p2, cc) {
   const s2 = calcPlayerStats(p2);
 
   const col1 = "#3b82f6", col2 = "#f59e0b";
-  const labels = ["Wins","Losses","Ties","Crisis W","Crisis L"];
+  const labels = ["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L"];
 
   const summaryEl = document.getElementById("statsSummary");
   summaryEl.innerHTML = `
@@ -221,8 +242,8 @@ function _renderCompare(p1, p2, cc) {
     type:"bar",
     data:{ labels,
       datasets:[
-        { label:p1, data:[s1.wins,s1.losses,s1.ties,s1.crisisWins,s1.crisisLosses], backgroundColor:col1, borderRadius:3 },
-        { label:p2, data:[s2.wins,s2.losses,s2.ties,s2.crisisWins,s2.crisisLosses], backgroundColor:col2, borderRadius:3 },
+        { label:p1, data:[s1.wins,s1.losses,s1.ties,s1.rivalsWins,s1.rivalsLosses,s1.crisisWins,s1.crisisLosses], backgroundColor:col1, borderRadius:3 },
+        { label:p2, data:[s2.wins,s2.losses,s2.ties,s2.rivalsWins,s2.rivalsLosses,s2.crisisWins,s2.crisisLosses], backgroundColor:col2, borderRadius:3 },
       ]},
     options:_smallChartOpts(cc, true),
   });
@@ -231,25 +252,29 @@ function _renderCompare(p1, p2, cc) {
 /* ===== Game Stats ===== */
 function renderGameStats() {
   const data = App.data;
-  const gameMap  = {};
-  const crossMap = {};
-  const crisisMap= {};
+  const gameMap   = {};
+  const rivalsMap = {};
+  const crossMap  = {};
+  const crisisMap = {};
 
   data.history.forEach(h => {
-    if (!h.isCrisis) {
+    if (h.isCrisis) {
+      if (h.cross !== "None") {
+        if (!crisisMap[h.cross]) crisisMap[h.cross] = {crisis:0,crisisWins:0,crisisLosses:0,basesUsed:new Set()};
+        crisisMap[h.cross].crisis++;
+        if (h.teamWon) crisisMap[h.cross].crisisWins++; else crisisMap[h.cross].crisisLosses++;
+        crisisMap[h.cross].basesUsed.add(h.game);
+      }
+    } else if (h.isRivals) {
+      if (!rivalsMap[h.game]) rivalsMap[h.game] = {played:0};
+      rivalsMap[h.game].played++;
+    } else {
       if (!gameMap[h.game]) gameMap[h.game] = {normal:0};
       gameMap[h.game].normal++;
       if (h.cross !== "None") {
         if (!crossMap[h.cross]) crossMap[h.cross] = {games:0, basesUsed: new Set()};
         crossMap[h.cross].games++;
         crossMap[h.cross].basesUsed.add(h.game);
-      }
-    } else {
-      if (h.cross !== "None") {
-        if (!crisisMap[h.cross]) crisisMap[h.cross] = {crisis:0,crisisWins:0,crisisLosses:0,basesUsed:new Set()};
-        crisisMap[h.cross].crisis++;
-        if (h.teamWon) crisisMap[h.cross].crisisWins++; else crisisMap[h.cross].crisisLosses++;
-        crisisMap[h.cross].basesUsed.add(h.game);
       }
     }
   });
@@ -268,11 +293,13 @@ function renderGameStats() {
     });
   });
 
-  const tN  = data.history.filter(h=>!h.isCrisis).length;
+  const tN  = data.history.filter(h=>!h.isCrisis&&!h.isRivals).length;
+  const tR  = data.history.filter(h=> h.isRivals).length;
   const tC  = data.history.filter(h=> h.isCrisis).length;
   const tCW = data.history.filter(h=>h.isCrisis&& h.teamWon).length;
   const tCL = data.history.filter(h=>h.isCrisis&&!h.teamWon).length;
   const gE  = Object.entries(gameMap).filter(([,s]) => s.normal > 0);
+  const rE  = Object.entries(rivalsMap).filter(([,s]) => s.played > 0);
   const cE  = Object.entries(crossMap).filter(([,s]) => s.games > 0);
   const crE = Object.entries(crisisMap).filter(([,s]) => s.crisis > 0);
   const ovArr = Object.values(oversizedUsage);
@@ -306,14 +333,8 @@ function renderGameStats() {
     return _sortCrisis.dir * cmp;
   });
 
-  // Sort: Oversized cards, take top 10 after sort
-  const sortedOv = [...ovArr].sort((a, b) => {
-    let cmp = 0;
-    if (_sortOver.col === "name")  cmp = a.name.localeCompare(b.name);
-    if (_sortOver.col === "set")   cmp = a.fromSet.localeCompare(b.fromSet);
-    if (_sortOver.col === "count") cmp = a.count - b.count;
-    return _sortOver.dir * cmp;
-  }).slice(0, 10);
+  // Top 10 oversized cards: fixed sort by most-used first
+  const sortedOv = [...ovArr].sort((a, b) => b.count - a.count).slice(0, 10);
 
   // Shared heading + table styles for consistent spacing
   const sectionHead = (title, sub) =>
@@ -324,6 +345,7 @@ function renderGameStats() {
     <div class="stats-grid">
       ${statCard(data.history.length,"Total Logged")}
       ${statCard(tN,"Normal Games")}
+      ${statCard(tR,"Rivals Games")}
       ${statCard(tC,"Crisis Games")}
       ${statCard(tCW,"Crisis Wins","#22c55e")}
       ${statCard(tCL,"Crisis Losses","#ef4444")}
@@ -337,6 +359,16 @@ function renderGameStats() {
         <th class="sortable" onclick="sortGameBy('count')">Normal Games ${_sortInd(_sortGame,'count')}</th>
       </tr></thead>
       <tbody>${sortedGE.map(([n,s])=>`<tr><td>${n}${_sGameTag(n)}</td><td>${s.normal}</td></tr>`).join("")}</tbody>
+    </table>` : ""}
+
+    ${rE.length ? `
+    ${sectionHead("By Rivals Base Game")}
+    <table class="stats-table">
+      <thead><tr>
+        <th>Game</th>
+        <th>Rivals Games</th>
+      </tr></thead>
+      <tbody>${rE.sort((a,b)=>b[1].played-a[1].played).map(([n,s])=>`<tr><td>${n}${_sGameTag(n)}</td><td>${s.played}</td></tr>`).join("")}</tbody>
     </table>` : ""}
 
     ${cE.length ? `
@@ -386,9 +418,9 @@ function renderGameStats() {
     <table class="stats-table">
       <thead><tr>
         <th style="color:var(--text-dim);font-size:11px;width:32px;">#</th>
-        <th class="sortable" onclick="sortOverBy('name')">Card ${_sortInd(_sortOver,'name')}</th>
-        <th class="sortable" onclick="sortOverBy('set')">From Set ${_sortInd(_sortOver,'set')}</th>
-        <th class="sortable" onclick="sortOverBy('count')">Times Used ${_sortInd(_sortOver,'count')}</th>
+        <th>Card</th>
+        <th>From Set</th>
+        <th>Times Used</th>
       </tr></thead>
       <tbody>${sortedOv.map((o, idx)=>`<tr>
         <td style="color:var(--text-dim);font-size:11px;">${idx+1}</td>
