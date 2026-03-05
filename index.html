@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DC Deck-Building Game Tracker</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- Toast banner -->
+<div id="toast"></div>
+
+<!-- Overlay — click to close drawer -->
+<div id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<header>
+  <h1>DC Deck-Building Tracker</h1>
+  <div class="header-right">
+    <button class="header-btn" onclick="showPage('homePage')" title="Home">🏠</button>
+    <button class="header-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle theme">☀️</button>
+    <button class="header-btn" onclick="toggleDrawer()" aria-label="Open menu">☰</button>
+  </div>
+</header>
+
+<nav id="drawer">
+  <div class="drawer-header">
+    <span>Menu</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-nav">
+    <button class="nav-btn" onclick="showPage('homePage')">🏠 Home</button>
+    <button class="nav-btn" onclick="showPage('gamePage')">🎮 Add Game</button>
+    <button class="nav-btn" onclick="showPage('historyPage')">📜 Game History</button>
+    <button class="nav-btn" onclick="showPage('statsPage')">📊 Game Stats</button>
+    <button class="nav-btn" onclick="showPage('adminPage')">⚙️ Settings</button>
+  </div>
+</nav>
+
+<!-- ===== Home Page ===== -->
+<main class="page active" id="homePage">
+  <div class="home-hero card">
+    <div class="home-logo">🦸</div>
+    <h2 class="home-title">DC Deck-Building Game Tracker</h2>
+    <p class="home-subtitle">Track every game, every hero, every nemesis defeated.</p>
+
+    <!-- Quick nav sits right under the hero tagline -->
+    <div class="home-nav-grid">
+      <button class="home-nav-card" onclick="showPage('gamePage')">
+        <span class="home-nav-icon">🎮</span><span class="home-nav-label">Add Game</span>
+      </button>
+      <button class="home-nav-card" onclick="showPage('historyPage')">
+        <span class="home-nav-icon">📜</span><span class="home-nav-label">Game History</span>
+      </button>
+      <button class="home-nav-card" onclick="showPage('statsPage')">
+        <span class="home-nav-icon">📊</span><span class="home-nav-label">Game Stats</span>
+      </button>
+      <button class="home-nav-card" onclick="showPage('adminPage')">
+        <span class="home-nav-icon">⚙️</span><span class="home-nav-label">Settings</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="home-about card">
+    <h3>What is this?</h3>
+    <p>This is a personal tracker for the <strong>DC Deck-Building Game</strong> by Cryptozoic Entertainment. Log your sessions, track which heroes you play, how many nemesis cards you defeat, and see your performance over time — all saved locally in your browser.</p>
+    <p style="margin-top:10px;">Whether you're playing a base set, an expansion crossover, or Crisis mode, this tool keeps a detailed record so you can look back at your full play history and stats.</p>
+    <p style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-left:3px solid var(--border);border-radius:4px;font-size:13px;color:var(--text-dim);">
+      <strong style="color:var(--text-muted);">Compatibility note:</strong> This tracker supports the standard competitive DC Deck-Building Game format. It does not yet support <strong style="color:var(--text-muted);">solo play</strong> or the <strong style="color:var(--text-muted);">Rebirth</strong> DC Deck-Building Game.
+    </p>
+  </div>
+
+  <div class="home-about card">
+    <h3>How to use it</h3>
+    <p><strong>First time?</strong> Go to <strong>⚙️ Settings</strong> and set up your player names. You can add base games, crossovers, and oversized cards there too. Batman and Superman are included by default to get you started.</p>
+    <p style="margin-top:8px;">Then head to <strong>🎮 Add Game</strong> to log each session. Select your base game, crossover, date, players, and oversized cards — the app handles the rest.</p>
+  </div>
+</main>
+
+<!-- ===== Add Game Page ===== -->
+<main class="page" id="gamePage">
+  <div class="page-header-row">
+    <div class="page-header">🎮 Add Game</div>
+    <div class="page-mini-nav"><button class="page-mini-btn page-mini-active" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+  </div>
+
+  <!-- Save success banner -->
+  <div id="gameSavedBanner" class="game-saved-banner" style="display:none;">
+    <span>✔ Game saved! Ready to log another.</span>
+    <button class="gsb-close" onclick="document.getElementById('gameSavedBanner').style.display='none';if(window._gameSavedBannerTimer){clearTimeout(window._gameSavedBannerTimer);window._gameSavedBannerTimer=null;}">✕</button>
+  </div>
+
+  <!-- Error banner (persists until corrected) -->
+  <div id="gameErrorBanner" class="game-error-banner" style="display:none;">
+    <span id="gameErrorMsg"></span>
+    <button class="geb-close" onclick="_clearGameError()">✕</button>
+  </div>
+
+  <!-- Edit mode banner -->
+  <div id="editModeBanner" style="display:none;" class="edit-mode-bar">
+    <span>✏️ Editing Game <strong id="editModeNum"></strong></span>
+    <div>
+      <button class="success"   onclick="saveGame()">💾 Save Changes</button>
+      <button class="secondary" onclick="cancelEditGame()">✕ Cancel</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Game Setup</h3>
+
+    <label for="baseGameSelect">Base Game:</label>
+    <select id="baseGameSelect" onchange="onBaseGameChange()"></select>
+    <div id="newBaseGameRow" class="inline-add-row" style="display:none;">
+      <input type="text" id="newBaseGameInput" placeholder="New base game name" maxlength="20">
+      <label class="crisis-inline-label" style="white-space:nowrap;">
+        <input type="checkbox" id="newBaseGameRivals"> Rivals
+      </label>
+      <button class="primary" onclick="confirmNewBaseGame()">Add</button>
+      <button class="secondary" onclick="document.getElementById('newBaseGameRow').style.display='none';renderGameSetup();">Cancel</button>
+    </div>
+
+    <label for="crossoverSelect">Crossover / Expansion:</label>
+    <select id="crossoverSelect" onchange="onCrossoverChange()"></select>
+    <div id="newCrossoverRow" class="inline-add-row" style="display:none;">
+      <input type="text" id="newCrossoverInput" placeholder="New crossover name" maxlength="20">
+      <label class="crisis-inline-label" style="white-space:nowrap;">
+        <input type="checkbox" id="newCrossoverCrisis"> Crisis mode
+      </label>
+      <button class="primary" onclick="confirmNewCrossover()">Add</button>
+      <button class="secondary" onclick="document.getElementById('newCrossoverRow').style.display='none';renderGameSetup();">Cancel</button>
+    </div>
+
+    <label for="gameDateInput">Game Date:</label>
+    <input type="date" id="gameDateInput" style="max-width:200px;">
+
+    <h4 style="margin-top:18px;">Additional Cards
+      <span style="font-weight:normal;font-size:12px;color:var(--text-dim);">(promos, extras)</span>
+    </h4>
+    <p class="hint">Select from saved cards or add new ones. New entries are saved automatically.</p>
+    <div id="additionalCardsContainer"></div>
+    <button class="primary" onclick="addAdditionalCard()">+ Add Card</button>
+  </div>
+
+  <div class="card">
+    <h3>Players</h3>
+    <p class="hint">Min 2, max 5. Each player must select an Oversized Card, Score (VPs), and # Nemesis Defeated.</p>
+    <p class="hint" id="rivalsHint" style="display:none;color:#c4b5fd;">⚔ Rivals mode active — maximum 2 players.</p>
+    <div id="playerContainer"></div>
+    <button class="primary" id="addPlayerBtn" onclick="addPlayerToGame()">+ Add Player</button>
+  </div>
+
+  <!-- Crisis fields -->
+  <div class="card" id="crisisTeamFields" style="display:none;">
+    <h4 style="margin-top:0;">Crisis Team Result</h4>
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+      <label style="font-size:15px;display:inline-flex;align-items:center;gap:6px;margin:0;">
+        <input type="radio" name="crisisResult" id="crisisWin" value="win" checked> Team Won
+      </label>
+      <label style="font-size:15px;display:inline-flex;align-items:center;gap:6px;margin:0;">
+        <input type="radio" name="crisisResult" id="crisisLoss" value="loss"> Team Lost
+      </label>
+    </div>
+    <label for="crisisNemesis">Team # Nemesis Defeated:</label>
+    <input type="number" id="crisisNemesis" min="0" placeholder="0" style="width:90px;">
+  </div>
+
+  <div class="card" id="saveBarNormal">
+    <button class="primary" id="saveGameBtn"       onclick="saveGame()">Save Game</button>
+    <button class="primary" id="saveGameCrisisBtn" onclick="saveGame()" style="display:none;">Save Crisis Game</button>
+    <button class="secondary" onclick="resetGameForm()">↺ Reset Form</button>
+  </div>
+</main>
+
+<!-- ===== Game History Page ===== -->
+<main class="page" id="historyPage">
+  <div class="page-header-row">
+    <div class="page-header">📜 Game History</div>
+    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn page-mini-active" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+      <div><label for="filterGame">Base Game:</label><select id="filterGame" onchange="applyHistoryFilter()"></select></div>
+      <div><label for="filterCross">Crossover:</label><select id="filterCross" onchange="applyHistoryFilter()"></select></div>
+    </div>
+  </div>
+  <div class="card" style="overflow-x:auto;">
+    <div id="historyList"></div>
+  </div>
+</main>
+
+<!-- ===== Game Stats Page ===== -->
+<main class="page" id="statsPage">
+  <div class="page-header-row">
+    <div class="page-header">📊 Game Stats</div>
+    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn page-mini-active" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('gameStatsBody','gameStatsChevron')">
+      <h3 style="margin:0;">Overall Game Stats</h3>
+      <span id="gameStatsChevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="gameStatsBody">
+      <div id="gameStatsSummary" style="margin-top:12px;"></div>
+      <div style="max-width:480px;margin:12px auto 0;"><canvas id="gameStatsChart" style="max-height:160px;"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('playerStatsBody','playerStatsChevron')">
+      <h3 style="margin:0;">Player Stats</h3>
+      <span id="playerStatsChevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="playerStatsBody">
+      <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;">
+        <div>
+          <label for="statsPlayer">Player:</label>
+          <select id="statsPlayer" onchange="renderPlayerStats()"></select>
+        </div>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="compareToggle" onchange="renderPlayerStats()"> Compare with:
+        </label>
+        <div id="compareRow" style="display:none;">
+          <select id="statsPlayer2" onchange="renderPlayerStats()"></select>
+        </div>
+      </div>
+      <div id="statsSummary" style="margin-top:14px;"></div>
+      <div style="max-width:480px;margin:12px auto 0;">
+        <canvas id="statsChart" style="max-height:180px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('archivedStatsBody','archivedStatsChevron')">
+      <h3 style="margin:0;">Archived Players</h3>
+      <span id="archivedStatsChevron">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="archivedStatsBody">
+      <div id="archivedStatsContainer" style="margin-top:12px;"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ===== Settings Page ===== -->
+<main class="page" id="adminPage">
+  <div class="page-header-row">
+    <div class="page-header">⚙️ Settings</div>
+    <div class="page-mini-nav"><button class="page-mini-btn" onclick="showPage('gamePage')">🎮 Add Game</button><button class="page-mini-btn" onclick="showPage('historyPage')">📜 History</button><button class="page-mini-btn" onclick="showPage('statsPage')">📊 Stats</button><button class="page-mini-btn page-mini-active" onclick="showPage('adminPage')">⚙️ Settings</button></div>
+  </div>
+
+  <div class="admin-save-bar">
+    <button class="primary" id="adminSaveBtn" onclick="saveAdminChanges()">💾 Save Changes</button>
+    <button class="secondary"                 onclick="discardAdminChanges()">↺ Discard</button>
+  </div>
+
+  <div class="card collapsible-card" style="margin-top:10px;">
+    <div class="collapsible-header" onclick="toggleSection('adminPlayersBody','adminPlayersChev')">
+      <h3 style="margin:0;">Active Players</h3><span id="adminPlayersChev">▼</span>
+    </div>
+    <div class="collapsible-body" id="adminPlayersBody">
+      <div id="adminPlayers" style="margin-top:10px;"></div>
+      <button class="primary" onclick="draftAddPlayer()">+ Add Player</button>
+      <div id="adminDefaultSlots" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);"></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminArchivedBody','adminArchivedChev')">
+      <h3 style="margin:0;">Archived Players</h3><span id="adminArchivedChev">▼</span>
+    </div>
+    <div class="collapsible-body" id="adminArchivedBody">
+      <p class="hint" style="margin-top:10px;">Click Restore to move back to active.</p>
+      <div id="adminArchivedPlayers"></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminGamesBody','adminGamesChev')">
+      <h3 style="margin:0;">Base Games</h3><span id="adminGamesChev">▼</span>
+    </div>
+    <div class="collapsible-body" id="adminGamesBody">
+      <div id="adminGames" style="margin-top:10px;"></div>
+      <button class="primary" onclick="draftAddBaseGame()">+ Add Base Game</button>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminCrossBody','adminCrossChev')">
+      <h3 style="margin:0;">Crossovers / Expansions</h3><span id="adminCrossChev">▼</span>
+    </div>
+    <div class="collapsible-body" id="adminCrossBody">
+      <p class="hint" style="margin-top:10px;">Mark Crisis mode to enable team play.</p>
+      <div id="adminCrossovers"></div>
+      <button class="primary" onclick="draftAddCrossover()">+ Add Crossover</button>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminCardsBody','adminCardsChev')">
+      <h3 style="margin:0;">Saved Additional Cards</h3><span id="adminCardsChev">▼</span>
+    </div>
+    <div class="collapsible-body" id="adminCardsBody">
+      <div id="adminKnownCards" style="margin-top:10px;"></div>
+      <button class="primary" onclick="draftAddKnownCard()">+ Add Card</button>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminOversizedBody','adminOversizedChev')">
+      <h3 style="margin:0;">Saved Oversized Cards</h3><span id="adminOversizedChev">▼</span>
+    </div>
+    <div class="collapsible-body" id="adminOversizedBody">
+      <div id="adminKnownOversized" style="margin-top:10px;"></div>
+      <button class="primary" onclick="draftAddOversized()">+ Add Oversized Card</button>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminImportBody','adminImportChev')">
+      <h3 style="margin:0;">Data</h3><span id="adminImportChev">▼</span>
+    </div>
+    <div class="collapsible-body" id="adminImportBody">
+      <div style="margin-top:10px;">
+        <p class="hint">All data is stored locally in your browser. Use Export to back up your data or transfer it to another device.</p>
+
+        <!-- Import / Export -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="primary" onclick="exportData()">⬇ Export JSON</button>
+          <button class="primary" id="showImportBtn">⬆ Import JSON</button>
+        </div>
+        <div id="importSection" style="display:none;margin-top:10px;">
+          <input type="file" id="importFile" accept=".json" style="color:var(--text-muted);margin-bottom:6px;">
+          <button class="danger" onclick="doImport()">Confirm Import (Overwrite)</button>
+        </div>
+
+        <hr style="border-color:var(--border);margin:14px 0;">
+        <button class="danger" onclick="resetData()">⚠ Reset All Data</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+<script src="js/history.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
