@@ -5,12 +5,14 @@ A browser-based tracker for the **DC Deck-Building Game** by Cryptozoic Entertai
 ## Features
 
 - **Add Games** — Log sessions with base game, crossover/expansion, date, players, oversized cards, scores (VPs), and nemesis defeats
+- **Additional Cards** — Track promo and other extra cards per game session; select from a saved library by type
 - **Crisis Mode** — Full support for team-based Crisis crossovers, including team win/loss and shared nemesis count
-- **Rivals Mode** — Flag base games as Rivals (2-player max)
+- **Rivals Mode** — Flag base games as Rivals (2-player max); enforced on the Add Game screen
 - **Game History** — Browse and filter past games by base game or crossover; edit or delete any entry
 - **Player Stats** — Win rates, average score, nemesis stats, hero usage, and Chart.js bar charts; compare two players side by side
 - **Overall Stats** — Aggregate game counts, most-played sets, and game outcome breakdown
-- **Settings** — Manage players, base games, crossovers, oversized cards, and additional promo cards; archive/restore players
+- **Settings** — Manage players, base games, crossovers, oversized cards, and additional cards (Promo/Other); archive/restore players; set default player slots
+- **Inline confirmations** — All destructive or navigating-away actions use inline Yes/No prompts; no browser popups
 - **Data portability** — Export all data as JSON and re-import on any device
 - **Dark/light theme** — Persisted per browser
 - **No build step** — Plain HTML, CSS, and vanilla JavaScript; open `index.html` directly

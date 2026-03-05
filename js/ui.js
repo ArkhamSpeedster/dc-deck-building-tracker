@@ -19,10 +19,13 @@ function showPage(pageId) {
   // Guard: leaving admin with unsaved changes
   const adminActive = document.getElementById("adminPage").classList.contains("active");
   if (adminActive && pageId !== "adminPage" && App.adminDirty) {
-    const save = confirm("You have unsaved Settings changes.\n\nOK = Save & continue\nCancel = Stay on Settings");
-    if (save) { saveAdminChanges(); }
-    else       { closeDrawer(); return; }
+    _showAdminLeaveConfirm(pageId);
+    return;
   }
+  _doShowPage(pageId);
+}
+
+function _doShowPage(pageId) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById(pageId).classList.add("active");
   closeDrawer();
@@ -32,6 +35,43 @@ function showPage(pageId) {
   if (gsb) gsb.style.display = "none";
   if (window._gameSavedBannerTimer) { clearTimeout(window._gameSavedBannerTimer); window._gameSavedBannerTimer = null; }
   renderAll();
+}
+
+function _showAdminLeaveConfirm(pageId) {
+  // Remove any existing banner
+  const existing = document.getElementById("adminLeaveConfirm");
+  if (existing) existing.remove();
+
+  const bar = document.createElement("div");
+  bar.id = "adminLeaveConfirm";
+
+  const msg = document.createElement("span");
+  msg.textContent = "⚠ Unsaved Settings changes — what would you like to do?";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "✓ Save & Leave";
+  saveBtn.className = "success";
+  saveBtn.style.cssText = "padding:4px 10px;font-size:13px;";
+  saveBtn.onclick = () => { bar.remove(); saveAdminChanges(); _doShowPage(pageId); };
+
+  const discardBtn = document.createElement("button");
+  discardBtn.textContent = "✗ Discard & Leave";
+  discardBtn.className = "danger";
+  discardBtn.style.cssText = "padding:4px 10px;font-size:13px;";
+  discardBtn.onclick = () => { bar.remove(); initAdminDraft(); App.adminDirty = false; _doShowPage(pageId); };
+
+  const stayBtn = document.createElement("button");
+  stayBtn.textContent = "Stay";
+  stayBtn.className = "secondary";
+  stayBtn.style.cssText = "padding:4px 10px;font-size:13px;";
+  stayBtn.onclick = () => { bar.remove(); closeDrawer(); };
+
+  bar.append(msg, saveBtn, discardBtn, stayBtn);
+
+  const adminPage = document.getElementById("adminPage");
+  adminPage.insertBefore(bar, adminPage.firstChild);
+  closeDrawer();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /* ===== Toast banner ===== */
@@ -73,11 +113,12 @@ function _inlineConfirm(btn, msg, onConfirm) {
   yes.textContent = "✓ Yes";
   yes.className = "danger";
   yes.style.cssText = "margin-left:4px;padding:2px 8px;font-size:12px;";
-  yes.onclick = onConfirm;
   const no = document.createElement("button");
   no.textContent = "✗ No";
   no.style.cssText = "margin-left:3px;padding:2px 8px;font-size:12px;";
-  no.onclick = () => { yes.remove(); no.remove(); btn.textContent = origText; btn.disabled = false; };
+  function cleanup() { yes.remove(); no.remove(); btn.textContent = origText; btn.disabled = false; }
+  yes.onclick = () => { cleanup(); onConfirm(); };
+  no.onclick = cleanup;
   btn.after(yes);
   yes.after(no);
 }

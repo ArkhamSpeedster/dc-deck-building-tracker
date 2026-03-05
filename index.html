@@ -102,7 +102,7 @@
     <span>✏️ Editing Game <strong id="editModeNum"></strong></span>
     <div>
       <button class="success"   onclick="saveGame()">💾 Save Changes</button>
-      <button class="secondary" onclick="cancelEditGame()">✕ Cancel</button>
+      <button class="secondary" onclick="cancelEditGame(this)">✕ Cancel</button>
     </div>
   </div>
 
@@ -111,25 +111,9 @@
 
     <label for="baseGameSelect">Base Game:</label>
     <select id="baseGameSelect" onchange="onBaseGameChange()"></select>
-    <div id="newBaseGameRow" class="inline-add-row" style="display:none;">
-      <input type="text" id="newBaseGameInput" placeholder="New base game name" maxlength="20">
-      <label class="crisis-inline-label" style="white-space:nowrap;">
-        <input type="checkbox" id="newBaseGameRivals"> Rivals
-      </label>
-      <button class="primary" onclick="confirmNewBaseGame()">Add</button>
-      <button class="secondary" onclick="document.getElementById('newBaseGameRow').style.display='none';renderGameSetup();">Cancel</button>
-    </div>
 
     <label for="crossoverSelect">Crossover / Expansion:</label>
     <select id="crossoverSelect" onchange="onCrossoverChange()"></select>
-    <div id="newCrossoverRow" class="inline-add-row" style="display:none;">
-      <input type="text" id="newCrossoverInput" placeholder="New crossover name" maxlength="20">
-      <label class="crisis-inline-label" style="white-space:nowrap;">
-        <input type="checkbox" id="newCrossoverCrisis"> Crisis mode
-      </label>
-      <button class="primary" onclick="confirmNewCrossover()">Add</button>
-      <button class="secondary" onclick="document.getElementById('newCrossoverRow').style.display='none';renderGameSetup();">Cancel</button>
-    </div>
 
     <label for="gameDateInput">Game Date:</label>
     <input type="date" id="gameDateInput" style="max-width:200px;">
@@ -137,7 +121,7 @@
     <h4 style="margin-top:18px;">Additional Cards
       <span style="font-weight:normal;font-size:12px;color:var(--text-dim);">(promos, extras)</span>
     </h4>
-    <p class="hint">Select from saved cards or add new ones. New entries are saved automatically.</p>
+    <p class="hint">Select from your saved additional cards (manage them in ⚙️ Settings).</p>
     <div id="additionalCardsContainer"></div>
     <button class="primary" onclick="addAdditionalCard()">+ Add Card</button>
   </div>
@@ -168,7 +152,7 @@
   <div class="card" id="saveBarNormal">
     <button class="primary" id="saveGameBtn"       onclick="saveGame()">Save Game</button>
     <button class="primary" id="saveGameCrisisBtn" onclick="saveGame()" style="display:none;">Save Crisis Game</button>
-    <button class="secondary" onclick="resetGameForm()">↺ Reset Form</button>
+    <button class="secondary" onclick="resetGameForm(this)">↺ Reset Form</button>
   </div>
 </main>
 
@@ -252,7 +236,7 @@
 
   <div class="admin-save-bar">
     <button class="primary" id="adminSaveBtn" onclick="saveAdminChanges()">💾 Save Changes</button>
-    <button class="secondary"                 onclick="discardAdminChanges()">↺ Discard</button>
+    <button class="secondary"                 onclick="discardAdminChanges(this)">↺ Discard</button>
   </div>
 
   <div class="card collapsible-card" style="margin-top:10px;">
@@ -260,7 +244,8 @@
       <h3 style="margin:0;">Active Players</h3><span id="adminPlayersChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminPlayersBody">
-      <div id="adminPlayers" style="margin-top:10px;"></div>
+      <p class="hint" style="margin-top:10px;">Your player roster — these names appear in the Add Game form. Min 2, max 5 players. Use the arrows to reorder.</p>
+      <div id="adminPlayers" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddPlayer()">+ Add Player</button>
       <div id="adminDefaultSlots" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);"></div>
     </div>
@@ -271,7 +256,7 @@
       <h3 style="margin:0;">Archived Players</h3><span id="adminArchivedChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminArchivedBody">
-      <p class="hint" style="margin-top:10px;">Click Restore to move back to active.</p>
+      <p class="hint" style="margin-top:10px;">Players removed from the active roster who still appear in your game history. Restore them to make them selectable again in new games.</p>
       <div id="adminArchivedPlayers"></div>
     </div>
   </div>
@@ -281,7 +266,8 @@
       <h3 style="margin:0;">Base Games</h3><span id="adminGamesChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminGamesBody">
-      <div id="adminGames" style="margin-top:10px;"></div>
+      <p class="hint" style="margin-top:10px;">The DC Deck-Building Game sets you own. Each game session uses one base game. Check <strong>Rivals</strong> for sets that use the Rivals rules — Rivals sessions are limited to exactly 2 players.</p>
+      <div id="adminGames" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddBaseGame()">+ Add Base Game</button>
     </div>
   </div>
@@ -291,8 +277,8 @@
       <h3 style="margin:0;">Crossovers / Expansions</h3><span id="adminCrossChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminCrossBody">
-      <p class="hint" style="margin-top:10px;">Mark Crisis mode to enable team play.</p>
-      <div id="adminCrossovers"></div>
+      <p class="hint" style="margin-top:10px;">Expansion packs that can be paired with a base game each session. Check <strong>Crisis</strong> for crossovers that use the cooperative Crisis rules — Crisis sessions replace individual scores with a shared team win/loss result.</p>
+      <div id="adminCrossovers" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddCrossover()">+ Add Crossover</button>
     </div>
   </div>
@@ -302,7 +288,8 @@
       <h3 style="margin:0;">Saved Additional Cards</h3><span id="adminCardsChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminCardsBody">
-      <div id="adminKnownCards" style="margin-top:10px;"></div>
+      <p class="hint" style="margin-top:10px;">Promo cards and other extras that can be added to a game session via the Add Game screen. <strong>Name</strong> = the card's name (e.g. "Batman Ninja"). <strong>Type</strong>: Promo = official promotional hero cards; Other = any other extra card.</p>
+      <div id="adminKnownCards" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddKnownCard()">+ Add Card</button>
     </div>
   </div>
@@ -312,7 +299,8 @@
       <h3 style="margin:0;">Saved Oversized Cards</h3><span id="adminOversizedChev">▼</span>
     </div>
     <div class="collapsible-body" id="adminOversizedBody">
-      <div id="adminKnownOversized" style="margin-top:10px;"></div>
+      <p class="hint" style="margin-top:10px;">The large hero or villain cards each player selects at the start of a game. Each card must be assigned to the set it came from so it can be filtered in the Add Game screen.</p>
+      <div id="adminKnownOversized" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddOversized()">+ Add Oversized Card</button>
     </div>
   </div>

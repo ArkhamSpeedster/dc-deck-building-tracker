@@ -57,12 +57,19 @@ function _adminStartEdit(btn, sectionKey, idx) {
 
   // Enable any disabled controls (checkboxes, selects) while in edit mode
   row.querySelectorAll("input[type=checkbox], select").forEach(el => el.disabled = false);
+  // Prevent checkboxes (and their labels) from stealing focus away from the text input
+  row.querySelectorAll("input[type=checkbox]").forEach(chk => {
+    chk.addEventListener("mousedown", e => e.preventDefault());
+    const lbl = chk.closest("label");
+    if (lbl) lbl.addEventListener("mousedown", e => e.preventDefault());
+  });
 
+  const originalVal = staticEl.textContent.trim();
   const maxLen = sectionKey === "players" ? 20 : 30;
   const input = document.createElement("input");
   input.type = "text";
   input.className = "admin-input";
-  input.value = staticEl.textContent.trim();
+  input.value = originalVal;
   input.maxLength = maxLen;
   staticEl.replaceWith(input);
   btn.textContent = "Done";
@@ -71,23 +78,66 @@ function _adminStartEdit(btn, sectionKey, idx) {
 
   let committed = false;
 
+  function _metaSelect() {
+    return row.querySelector("select");
+  }
+  function _metaMissing() {
+    if (sectionKey === "oversized") return !App.adminDraft.knownOversized[idx]?.fromSet;
+    if (sectionKey === "cards")     return !App.adminDraft.knownCards[idx]?.type;
+    return false;
+  }
+
   function commit() {
     if (committed) return;
-    committed = true;
     const val = input.value.trim();
+    if (!val) {
+      // Empty: silently revert, or remove if this was a brand-new blank entry
+      committed = true;
+      if (!originalVal) {
+        if (sectionKey === "players")    { App.adminDraft.players.splice(idx, 1); if (App._draftOrigins) App._draftOrigins.splice(idx, 1); }
+        if (sectionKey === "games")      App.adminDraft.games.splice(idx, 1);
+        if (sectionKey === "crossovers") App.adminDraft.crossovers.splice(idx, 1);
+        if (sectionKey === "cards")      App.adminDraft.knownCards.splice(idx, 1);
+        if (sectionKey === "oversized")  App.adminDraft.knownOversized.splice(idx, 1);
+        markAdminDirty();
+      }
+      _reRenderSection(sectionKey);
+      return;
+    }
+    // If set/type not chosen yet, keep edit mode open (don't commit on blur)
+    if (_metaMissing()) return;
+    committed = true;
     _updateDraftText(sectionKey, idx, val);
     markAdminDirty();
     _reRenderSection(sectionKey);
   }
 
-  input.addEventListener("blur", commit);
+  function commitOrWarn() {
+    if (committed) return;
+    if (!input.value.trim()) {
+      input.style.outline = "2px solid #ef4444";
+      input.focus();
+      return;
+    }
+    if (_metaMissing()) {
+      const sel = _metaSelect();
+      if (sel) { sel.style.outline = "2px solid #ef4444"; sel.focus(); }
+      return;
+    }
+    commit();
+  }
+
+  // Commit when focus leaves the row entirely (not just moving to type/set select within it)
+  row.addEventListener("focusout", e => {
+    if (!row.contains(e.relatedTarget)) commit();
+  });
   input.addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Enter") { e.preventDefault(); commitOrWarn(); }
     if (e.key === "Escape") { committed = true; _reRenderSection(sectionKey); }
   });
   // Prevent blur-before-click race
   btn.addEventListener("mousedown", e => e.preventDefault(), { once: true });
-  btn.onclick = commit;
+  btn.onclick = commitOrWarn;
 }
 
 function _updateDraftText(sectionKey, idx, val) {
@@ -118,6 +168,10 @@ function _autoEditLastRow(containerId) {
 /* ===== Validation ===== */
 function validateAdminDraft() {
   const d = App.adminDraft;
+
+  if (d.defaultSlot1 && d.defaultSlot2 && d.defaultSlot1 === d.defaultSlot2) {
+    showToast("Default Slot 1 and Slot 2 cannot be the same player.", "error"); return false;
+  }
 
   if (d.players.length < 2) { showToast("At least 2 players required.", "error"); return false; }
   if (d.players.length > 5) { showToast("Max 5 players.", "error"); return false; }
@@ -236,8 +290,16 @@ function saveAdminChanges() {
   renderAdmin();
 }
 
-function discardAdminChanges() {
-  if (App.adminDirty && !confirm("Discard all unsaved changes?")) return;
+function discardAdminChanges(btn) {
+  if (App.adminDirty) {
+    _inlineConfirm(btn, "Discard all unsaved changes?", () => {
+      initAdminDraft();
+      const sb = document.getElementById("adminSaveBtn");
+      if (sb) { sb.classList.remove("unsaved"); sb.textContent = "💾 Save Changes"; }
+      renderAdmin();
+    });
+    return;
+  }
   initAdminDraft(); renderAdmin();
 }
 
@@ -327,22 +389,35 @@ function renderAdminDefaultSlots() {
   const div = document.getElementById("adminDefaultSlots");
   if (!div) return;
   const players = App.adminDraft.players;
-  const makeOpts = (current) => [`<option value="">— No default —</option>`,
-    ...players.map(p => `<option value="${_ae(p)}" ${current === p ? "selected" : ""}>${_ae(p)}</option>`)
-  ].join("");
+
+  // Auto-initialise if null or player no longer in roster
+  let s1 = App.adminDraft.defaultSlot1;
+  let s2 = App.adminDraft.defaultSlot2;
+  if (!s1 || !players.includes(s1)) { s1 = players[0] || null; App.adminDraft.defaultSlot1 = s1; }
+  if (!s2 || !players.includes(s2)) { s2 = players.find(p => p !== s1) || null; App.adminDraft.defaultSlot2 = s2; }
+
+  // All players shown in both dropdowns — duplicate check shown inline and blocked at save
+  const makeOpts = (current) =>
+    players.map(p => `<option value="${_ae(p)}" ${p === current ? "selected" : ""}>${_ae(p)}</option>`).join("");
+
+  const dupWarning = (s1 && s1 === s2)
+    ? `<p style="color:#ef4444;font-size:12px;margin:6px 0 0;">⚠ Slot 1 and Slot 2 cannot be the same player — change one before saving.</p>`
+    : "";
+
   div.innerHTML = `
     <p style="color:var(--text-muted);font-size:13px;font-weight:600;margin:0 0 4px;">Default Players for New Games</p>
     <p class="hint" style="margin:0 0 10px;">Who appears in slot 1 and 2 when opening the Add Game form.</p>
     <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
       <div style="display:flex;align-items:center;gap:8px;">
         <label style="font-size:13px;color:var(--text-muted);white-space:nowrap;">Slot 1:</label>
-        <select onchange="draftSetDefaultSlot(1, this.value); markAdminDirty();">${makeOpts(App.adminDraft.defaultSlot1)}</select>
+        <select onchange="draftSetDefaultSlot(1, this.value); markAdminDirty(); renderAdminDefaultSlots();">${makeOpts(s1)}</select>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <label style="font-size:13px;color:var(--text-muted);white-space:nowrap;">Slot 2:</label>
-        <select onchange="draftSetDefaultSlot(2, this.value); markAdminDirty();">${makeOpts(App.adminDraft.defaultSlot2)}</select>
+        <select onchange="draftSetDefaultSlot(2, this.value); markAdminDirty(); renderAdminDefaultSlots();">${makeOpts(s2)}</select>
       </div>
     </div>
+    ${dupWarning}
   `;
 }
 
@@ -400,6 +475,7 @@ function renderAdminGames() {
       row.innerHTML = `<span class="admin-locked">Original Core Set (2012)</span><span class="admin-lock-badge">🔒 Default</span>`;
     } else {
       row.innerHTML = `
+        <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
         <span class="admin-static">${_ae(g.name)}</span>
         <button onclick="draftMoveGame(${i},-1)" title="Up">↑</button>
         <button onclick="draftMoveGame(${i}, 1)" title="Down">↓</button>
@@ -456,11 +532,12 @@ function renderAdminCrossovers() {
       row.innerHTML = `<span class="admin-locked">None</span><span class="admin-lock-badge">🔒 Default</span>`;
     } else {
       row.innerHTML = `
+        <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
         <span class="admin-static">${_ae(c.name)}</span>
         <button onclick="draftMoveCrossover(${i},-1)" title="Up">↑</button>
         <button onclick="draftMoveCrossover(${i}, 1)" title="Down">↓</button>
         <label class="crisis-inline-label">
-          <input type="checkbox" ${c.isCrisis?"checked":""} disabled onchange="draftUpdateCrisisCross(${i},this.checked)">
+          <input type="checkbox" ${c.isCrisis?"checked":""} disabled onchange="draftUpdateCrisisCross(${i},this.checked);">
           Crisis
         </label>
         <button class="secondary" onclick="_adminStartEdit(this,'crossovers',${i})">Edit</button>
@@ -514,12 +591,13 @@ function renderAdminKnownCards() {
   // Filter bar
   const filterBar = document.createElement("div");
   filterBar.className = "admin-filter-bar";
-  filterBar.innerHTML = `<span style="font-size:12px;color:var(--text-dim);">Filter by type:</span>` +
-    [["", "All"], ["Promo", "Promo"], ["Other", "Other"]].map(([val, label]) =>
-      `<button class="${_adminCardTypeFilter === val ? "primary" : "secondary"}"
-               style="padding:3px 10px;font-size:12px;"
-               onclick="_setAdminCardFilter('${val}')">${label}</button>`
-    ).join("");
+  const typeOpts = [["", "All Types"], ["Promo", "Promo"], ["Other", "Other"]].map(([val, label]) =>
+    `<option value="${val}" ${val === _adminCardTypeFilter ? "selected" : ""}>${label}</option>`
+  ).join("");
+  filterBar.innerHTML = `
+    <span style="font-size:12px;color:var(--text-dim);">Filter by type:</span>
+    <select style="max-width:220px;font-size:13px;" onchange="_setAdminCardFilter(this.value)">${typeOpts}</select>
+  `;
   cDiv.appendChild(filterBar);
 
   const cards = App.adminDraft.knownCards;
@@ -545,12 +623,15 @@ function renderAdminKnownCards() {
   filtered.forEach(({ c, origIdx }) => {
     const row = document.createElement("div");
     row.className = "admin-row";
-    const typeOpts = ["Promo", "Other"].map(t =>
-      `<option value="${t}" ${t === c.type ? "selected" : ""}>${t}</option>`
-    ).join("");
+    const typeOpts = [
+      !c.type ? `<option value="" disabled selected class="placeholder-opt">— Choose Type —</option>` : "",
+      ...["Promo", "Other"].map(t => `<option value="${t}" ${t === c.type ? "selected" : ""}>${t}</option>`)
+    ].join("");
     row.innerHTML = `
+      <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
       <span class="admin-static">${_ae(c.name)}</span>
-      <select disabled onchange="draftUpdateKnownCardType(${origIdx},this.value); markAdminDirty();">${typeOpts}</select>
+      <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Type:</label>
+      <select disabled onchange="draftUpdateKnownCardType(${origIdx},this.value); markAdminDirty();" class="${!c.type ? 'placeholder-selected' : ''}">${typeOpts}</select>
       <button class="secondary" onclick="_adminStartEdit(this,'cards',${origIdx})">Edit</button>
       <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Delete</button>
     `;
@@ -565,7 +646,7 @@ function _adminConfirmRemoveKnownCard(btn, i) {
 
 function draftAddKnownCard() {
   _adminCardTypeFilter = ""; // reset filter so new card is visible
-  App.adminDraft.knownCards.push({ name: "", type: "Promo" });
+  App.adminDraft.knownCards.push({ name: "", type: "" });
   markAdminDirty(); renderAdminKnownCards();
   _autoEditLastRow("adminKnownCards");
 }
@@ -645,7 +726,9 @@ function renderAdminKnownOversized() {
       ...allSets.map(s => `<option value="${s}" ${s === c.fromSet ? "selected" : ""}>${s}</option>`),
     ].join("");
     row.innerHTML = `
+      <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
       <span class="admin-static">${_ae(c.name)}</span>
+      <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Set:</label>
       <select disabled onchange="draftUpdateOversizedSet(${origIdx},this.value); markAdminDirty();"
               class="${!c.fromSet ? "placeholder-selected" : ""}">${setOptsHtml}</select>
       <button class="secondary" onclick="_adminStartEdit(this,'oversized',${origIdx})">Edit</button>

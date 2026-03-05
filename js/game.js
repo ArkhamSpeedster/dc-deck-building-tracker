@@ -38,28 +38,20 @@ function renderGameSetup() {
   const baseSelect = document.getElementById("baseGameSelect");
   const prev = baseSelect.value;
   baseSelect.innerHTML =
-    data.games.map(g => `<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("") +
-    `<option value="__new_game__">— Add new base game…</option>`;
-  if (prev && prev !== "__new_game__") baseSelect.value = prev;
+    data.games.map(g => `<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
+  if (prev) baseSelect.value = prev;
 
   const crossSelect = document.getElementById("crossoverSelect");
   const prevC = crossSelect.value;
   crossSelect.innerHTML =
-    data.crossovers.map(c => `<option value="${_esc(c.name)}" data-crisis="${c.isCrisis}">${_esc(c.name)}</option>`).join("") +
-    `<option value="__new_cross__">— Add new crossover…</option>`;
-  if (prevC && prevC !== "__new_cross__") crossSelect.value = prevC;
+    data.crossovers.map(c => `<option value="${_esc(c.name)}" data-crisis="${c.isCrisis}">${_esc(c.name)}</option>`).join("");
+  if (prevC) crossSelect.value = prevC;
 
   checkCrisis();
   updateRivalsHint();
 }
 
 function onBaseGameChange() {
-  const sel = document.getElementById("baseGameSelect");
-  if (sel.value === "__new_game__") {
-    document.getElementById("newBaseGameRow").style.display = "flex";
-    document.getElementById("newBaseGameInput").focus();
-    sel.value = App.data.games[0]?.name || "";
-  }
   updateRivalsHint();
   updateAddPlayerBtn();
 }
@@ -109,12 +101,6 @@ function confirmNewCrossover() {
 }
 
 function onCrossoverChange() {
-  const sel = document.getElementById("crossoverSelect");
-  if (sel.value === "__new_cross__") {
-    document.getElementById("newCrossoverRow").style.display = "flex";
-    document.getElementById("newCrossoverInput").focus();
-    sel.value = App.data.crossovers[0]?.name || "None";
-  }
   checkCrisis();
 }
 
@@ -275,12 +261,8 @@ function _appendPlayerRow(prefill) {
     div.dataset.oversizedName = typedName;
     div.dataset.oversizedFrom = typedFrom;
   } else {
-    // New row with no prefill — default set filter to Original Core Set
-    const ocs = "Original Core Set (2012)";
-    if ([...setFilterSel.options].some(o => o.value === ocs)) {
-      setFilterSel.value = ocs;
-      onOversizedSetFilterChange(setFilterSel);
-    }
+    // New row with no prefill — default to All Sets (empty filter)
+    setFilterSel.value = "";
   }
 
   _tintPlaceholders(div);
@@ -391,18 +373,37 @@ function removePlayerRow(btn) {
   _markGameDirty();
 }
 
+function _showAddPlayerMsg(msg) {
+  const existing = document.getElementById("addPlayerMsg");
+  if (existing) existing.remove();
+  const div = document.createElement("div");
+  div.id = "addPlayerMsg";
+  div.className = "additional-card-row fade";
+  div.style.cssText = "margin-top:6px;";
+  div.innerHTML = `<span style="color:var(--text-dim);font-size:13px;flex:1;">${msg}</span>
+    <button class="danger" onclick="document.getElementById('addPlayerMsg').remove()">✕</button>`;
+  document.getElementById("addPlayerBtn").after(div);
+}
+
 function addPlayerToGame() {
   const rows   = [...document.querySelectorAll(".player-row")];
   const rivals = isRivalsMode();
-  if (rivals && rows.length >= 2) { showToast("Rivals mode allows a maximum of 2 players.", "error"); return; }
-  if (rows.length >= 5) { showToast("Max 5 players.", "error"); return; }
+  if (rivals && rows.length >= 2) { _showAddPlayerMsg("Rivals mode: maximum 2 players."); return; }
+  if (rows.length >= 5) { _showAddPlayerMsg("Maximum 5 players reached."); return; }
   if (rows.length >= App.data.players.length) {
-    showToast("All players are added. Go to ⚙️ Settings to add more players.", "info", 4000);
+    _showAddPlayerMsg("All players are already added. Go to ⚙️ Settings to add more players.");
+    return;
+  }
+  if (App.data.knownOversized.length < rows.length + 1) {
+    _showAddPlayerMsg(`Not enough oversized cards — need at least ${rows.length + 1} but only ${App.data.knownOversized.length} saved. Add more in ⚙️ Settings.`);
     return;
   }
   if (!rows.every(r => r.querySelector(".pname").value.trim())) {
-    showToast("Fill in all existing player rows first.", "error"); return;
+    _showAddPlayerMsg("Fill in all existing player rows first.");
+    return;
   }
+  const existing = document.getElementById("addPlayerMsg");
+  if (existing) existing.remove();
   const chosen = chosenPlayerNames();
   const next   = App.data.players.find(p => !chosen.includes(p)) || "";
   _appendPlayerRow({ name: next });
@@ -461,9 +462,21 @@ function addAdditionalCard(prefillName, prefillType) {
     return;
   }
 
-  // No library cards at all → redirect to Settings
+  // Remove any existing picker/message row before adding a new one
+  const existingPicker = document.querySelector(".additional-card-row.card-picker-row");
+  if (existingPicker) existingPicker.remove();
+
+  const container = document.getElementById("additionalCardsContainer");
+
+  // No library cards at all → show inline message
   if (!App.data.knownCards.length) {
-    showToast("No saved cards — add them in ⚙️ Settings first.", "info", 4000);
+    const div = document.createElement("div");
+    div.className = "additional-card-row card-picker-row fade";
+    div.innerHTML = `
+      <span style="color:var(--text-dim);font-size:13px;flex:1;">No saved cards — add them in ⚙️ Settings first.</span>
+      <button class="danger" onclick="this.closest('.additional-card-row').remove()">✕</button>
+    `;
+    container.appendChild(div);
     return;
   }
 
@@ -472,33 +485,28 @@ function addAdditionalCard(prefillName, prefillType) {
     !already.some(a => a.name.toLowerCase() === k.name.toLowerCase() && a.type === k.type)
   );
   if (!available.length) {
-    showToast("All saved cards are already added.", "info", 3000);
+    const div = document.createElement("div");
+    div.className = "additional-card-row card-picker-row fade";
+    div.innerHTML = `
+      <span style="color:var(--text-dim);font-size:13px;flex:1;">All saved cards are already added.</span>
+      <button class="danger" onclick="this.closest('.additional-card-row').remove()">✕</button>
+    `;
+    container.appendChild(div);
     return;
   }
-
-  const container = document.getElementById("additionalCardsContainer");
   const div = document.createElement("div");
   div.className = "additional-card-row card-picker-row fade";
 
   const types = [...new Set(App.data.knownCards.map(k => k.type))].sort();
-  const defaultType = types.includes("Promo") ? "Promo" : (types[0] || "");
   const typeFilterHtml = `<select class="cardTypePicker" onchange="onAdditionalCardTypeFilter(this)">
-      <option value="">All Types</option>
-      ${types.map(t => `<option value="${_esc(t)}" ${t === defaultType ? "selected" : ""}>${_esc(t)}</option>`).join("")}
+      <option value="" disabled selected class="placeholder-opt">— Choose Type —</option>
+      ${types.map(t => `<option value="${_esc(t)}">${_esc(t)}</option>`).join("")}
     </select>`;
-
-  const filteredAvailable = defaultType
-    ? available.filter(k => k.type === defaultType)
-    : available;
-  const cardOptsHtml = filteredAvailable.map(k =>
-    `<option value="${_esc(k.name)}||${_esc(k.type)}">${_esc(k.name)} (${_esc(k.type)})</option>`
-  ).join("");
 
   div.innerHTML = `
     ${typeFilterHtml}
-    <select class="cardPicker" onchange="onCardPickerChange(this)">
-      <option value="">— Select saved card —</option>
-      ${cardOptsHtml}
+    <select class="cardPicker" onchange="onCardPickerChange(this)" disabled>
+      <option value="">— Select type first —</option>
     </select>
     <button class="danger" onclick="this.closest('.additional-card-row').remove()">✕</button>
   `;
@@ -517,10 +525,12 @@ function onAdditionalCardTypeFilter(typeFilterSel) {
     return true;
   });
 
+  cardSel.disabled = false;
   cardSel.innerHTML = `
     <option value="">— Select saved card —</option>
     ${available.map(k => `<option value="${_esc(k.name)}||${_esc(k.type)}">${_esc(k.name)} (${_esc(k.type)})</option>`).join("")}
   `;
+  _tintPlaceholders(pickerRow);
 }
 
 function onCardPickerChange(sel) {
@@ -715,7 +725,7 @@ function _showGameSavedBanner() {
   const banner = document.getElementById("gameSavedBanner");
   if (!banner) return;
   banner.style.display = "flex";
-  banner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  window.scrollTo({ top: 0, behavior: "smooth" });
   if (window._gameSavedBannerTimer) clearTimeout(window._gameSavedBannerTimer);
   window._gameSavedBannerTimer = setTimeout(() => { banner.style.display = "none"; }, 6000);
 }
@@ -733,16 +743,30 @@ function _clearGameError() {
 }
 
 /* ===== Reset form ===== */
-function resetGameForm() {
-  if (_gameIsDirty && !confirm("Reset the form? All unsaved changes will be lost.")) return;
+function resetGameForm(btn) {
+  if (_gameIsDirty) {
+    _inlineConfirm(btn, "Reset the form?", () => { _clearGameError(); initGamePage(); renderGameSetup(); });
+    return;
+  }
   _clearGameError();
   initGamePage();
   renderGameSetup();
 }
 
-function cancelEditGame() {
+function cancelEditGame(btn) {
   if (_gameIsDirty) {
-    if (!confirm("Discard changes to this game?")) return;
+    _inlineConfirm(btn, "Discard changes?", () => {
+      if (_editingEntry) {
+        App.data.history.push(_editingEntry);
+        _sortHistory();
+        saveData();
+        _editingEntry = null;
+      }
+      _gameIsDirty = false;
+      initGamePage();
+      showPage("historyPage");
+    });
+    return;
   }
   if (_editingEntry) {
     App.data.history.push(_editingEntry);
@@ -795,8 +819,6 @@ function initGamePage() {
   updateAddPlayerBtn();
 
   document.getElementById("additionalCardsContainer").innerHTML = "";
-  document.getElementById("newBaseGameRow").style.display  = "none";
-  document.getElementById("newCrossoverRow").style.display = "none";
   document.getElementById("crisisNemesis").value = "";
   document.getElementById("crisisWin").checked = true;
   document.getElementById("gameDateInput").value = toDateInputValue(null);

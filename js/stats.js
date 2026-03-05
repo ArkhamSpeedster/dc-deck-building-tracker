@@ -340,7 +340,7 @@ function renderGameStats() {
     </table>` : ""}
 
     ${cE.length ? `
-    ${sectionHead("By Crossover (Normal)")}
+    ${sectionHead("By Crossover")}
     <table class="stats-table">
       <thead><tr>
         <th class="sortable" onclick="sortCrossBy('name')">Crossover ${_sortInd(_sortCross,'name')}</th>
