@@ -290,10 +290,12 @@ function _appendPlayerRow(prefill) {
 }
 
 function _buildOversizedOptions(otherChosen, setFilter) {
+  const banned = App.data.bannedOversized || [];
   return App.data.knownOversized
     .filter(k => {
       if (otherChosen.includes(`${k.name}||${k.fromSet}`)) return false;
       if (setFilter && k.fromSet !== setFilter) return false;
+      if (banned.some(b => b.name === k.name && b.fromSet === k.fromSet)) return false;
       return true;
     })
     .map(k => {
@@ -502,8 +504,10 @@ function addAdditionalCard(prefillName, prefillType) {
   }
 
   const already   = currentAdditionalCards();
+  const bannedC   = App.data.bannedCards || [];
   const available = App.data.knownCards.filter(k =>
-    !already.some(a => a.name.toLowerCase() === k.name.toLowerCase() && a.type === k.type)
+    !already.some(a => a.name.toLowerCase() === k.name.toLowerCase() && a.type === k.type) &&
+    !bannedC.some(b => b.name === k.name && b.type === k.type)
   );
   if (!available.length) {
     const div = document.createElement("div");
@@ -539,10 +543,12 @@ function onAdditionalCardTypeFilter(typeFilterSel) {
   const cardSel   = pickerRow.querySelector(".cardPicker");
   const typeFilter = typeFilterSel.value;
 
-  const already = currentAdditionalCards();
+  const already   = currentAdditionalCards();
+  const bannedC2  = App.data.bannedCards || [];
   const available = App.data.knownCards.filter(k => {
     if (already.some(a => a.name.toLowerCase() === k.name.toLowerCase() && a.type === k.type)) return false;
     if (typeFilter && k.type !== typeFilter) return false;
+    if (bannedC2.some(b => b.name === k.name && b.type === k.type)) return false;
     return true;
   });
 

@@ -45,6 +45,8 @@ function _sOversizedTag(name, fromSet) {
   if (fromSet === "Promo" || fromSet === "Other") return "";
   const inLib     = App.data.knownOversized.some(k => k.name === name && k.fromSet === fromSet);
   const isArchived = (App.data.archivedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
+  const isBanned  = (App.data.bannedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
+  if (isBanned) return ` <span class="banned-badge">banned</span>`;
   return (!inLib && isArchived) ? ` <span class="archived-badge">archived</span>` : "";
 }
 

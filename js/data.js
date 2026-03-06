@@ -32,6 +32,8 @@ const DEFAULT_DATA = {
   archivedCrossovers:[],
   archivedCards:     [],
   archivedOversized: [],
+  bannedCards:       [],
+  bannedOversized:   [],
   history:          [],
   nextGameNum:      1,
   renames:          [],
@@ -72,6 +74,8 @@ function _normalise(d) {
   if (!d.archivedCrossovers)  d.archivedCrossovers  = [];
   if (!d.archivedCards)       d.archivedCards       = [];
   if (!d.archivedOversized)   d.archivedOversized   = [];
+  if (!d.bannedCards)         d.bannedCards         = [];
+  if (!d.bannedOversized)     d.bannedOversized     = [];
   if (d.nextGameNum == null) d.nextGameNum = (d.history.length || 0) + 1;
   if (d.defaultSlot1 === undefined) d.defaultSlot1 = null;
   if (d.defaultSlot2 === undefined) d.defaultSlot2 = null;
@@ -192,3 +196,5 @@ function restoreDeletedGame(name)             { App.data.archivedGames      = (A
 function restoreDeletedCrossover(name)        { App.data.archivedCrossovers = (App.data.archivedCrossovers || []).filter(c => c.name !== name); }
 function restoreDeletedCard(name, type)       { App.data.archivedCards      = (App.data.archivedCards      || []).filter(k => !(k.name === name && k.type === type)); }
 function restoreDeletedOversized(name, fromSet){ App.data.archivedOversized  = (App.data.archivedOversized  || []).filter(k => !(k.name === name && k.fromSet === fromSet)); }
+function restoreBannedCard(name, type)        { App.data.bannedCards        = (App.data.bannedCards        || []).filter(k => !(k.name === name && k.type === type)); }
+function restoreBannedOversized(name, fromSet){ App.data.bannedOversized    = (App.data.bannedOversized    || []).filter(k => !(k.name === name && k.fromSet === fromSet)); }

@@ -43,6 +43,8 @@ function _cardTag(name, type) {
   const data = App.data;
   const inLib = data.knownCards.some(k => k.name === name && k.type === type);
   const isArchived = (data.archivedCards || []).some(k => k.name === name && k.type === type);
+  const isBanned = (data.bannedCards || []).some(k => k.name === name && k.type === type);
+  if (isBanned) return ` <span class="banned-badge">banned</span>`;
   if (!inLib && isArchived) return ` <span class="archived-badge">archived</span>`;
   return "";
 }
@@ -53,6 +55,8 @@ function _oversizedTag(name, fromSet) {
   if (fromSet === "Promo" || fromSet === "Other") return "";
   const inLib = data.knownOversized.some(k => k.name === name && k.fromSet === fromSet);
   const isArchived = (data.archivedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
+  const isBanned = (data.bannedOversized || []).some(k => k.name === name && k.fromSet === fromSet);
+  if (isBanned) return ` <span class="banned-badge">banned</span>`;
   if (!inLib && isArchived) return ` <span class="archived-badge">archived</span>`;
   return "";
 }

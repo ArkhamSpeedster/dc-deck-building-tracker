@@ -48,34 +48,65 @@
     <!-- Quick nav sits right under the hero tagline -->
     <div class="home-nav-grid">
       <button class="home-nav-card" onclick="showPage('gamePage')">
-        <span class="home-nav-icon">🎲</span><span class="home-nav-label">Log Game</span>
+        <span class="home-nav-icon">🎲</span>
+        <span class="home-nav-label">Log Game</span>
+        <span class="home-nav-desc">Record a new session</span>
       </button>
       <button class="home-nav-card" onclick="showPage('historyPage')">
-        <span class="home-nav-icon">📜</span><span class="home-nav-label">Game History</span>
+        <span class="home-nav-icon">📜</span>
+        <span class="home-nav-label">Game History</span>
+        <span class="home-nav-desc">Browse & filter past games</span>
       </button>
       <button class="home-nav-card" onclick="showPage('statsPage')">
-        <span class="home-nav-icon">📊</span><span class="home-nav-label">Game Stats</span>
+        <span class="home-nav-icon">📊</span>
+        <span class="home-nav-label">Game Stats</span>
+        <span class="home-nav-desc">Win rates, hero usage & charts</span>
       </button>
       <button class="home-nav-card" onclick="showPage('adminPage')">
-        <span class="home-nav-icon">⚙️</span><span class="home-nav-label">Settings</span>
+        <span class="home-nav-icon">⚙️</span>
+        <span class="home-nav-label">Settings</span>
+        <span class="home-nav-desc">Players, sets & cards</span>
       </button>
     </div>
   </div>
 
   <div class="home-about card">
     <h3>What is this?</h3>
-    <p>This is a personal tracker for the <strong>DC Deck-Building Game</strong> by Cryptozoic Entertainment. Log your sessions, track which heroes you play, how many nemesis cards you defeat, and see your performance over time — all saved locally in your browser.</p>
+    <p>A personal tracker for the <strong>DC Deck-Building Game</strong> by Cryptozoic Entertainment. Log your sessions, track which heroes you play, how many nemesis cards you defeat, and see your performance over time — all saved locally in your browser with no server or account required.</p>
     <p style="margin-top:10px;">Whether you're playing a base set, an expansion crossover, or Crisis mode, this tool keeps a detailed record so you can look back at your full play history and stats.</p>
     <p style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-left:3px solid var(--border);border-radius:4px;font-size:13px;color:var(--text-dim);">
-      <strong style="color:var(--text-muted);">Compatibility note:</strong> This tracker supports the standard competitive DC Deck-Building Game format. It does not yet support <strong style="color:var(--text-muted);">solo play</strong> or the <strong style="color:var(--text-muted);">Rebirth</strong> DC Deck-Building Game.
+      <strong style="color:var(--text-muted);">Compatibility note:</strong> Supports the standard competitive DC Deck-Building Game format. Does not yet support <strong style="color:var(--text-muted);">solo play</strong> or the <strong style="color:var(--text-muted);">Rebirth</strong> DC Deck-Building Game.
     </p>
   </div>
 
   <div class="home-about card">
-    <h3>How to use it</h3>
-    <p><strong>First time?</strong> Go to <strong>⚙️ Settings</strong> and set up your player names. You can add base games, crossovers, and oversized cards there too. Batman and Superman are included by default to get you started.</p>
-    <p style="margin-top:8px;">Then head to <strong>🎲 Log Game</strong> to log each session. Select your base game, crossover, date, players, and oversized cards — the app handles the rest.</p>
+    <h3>Getting started</h3>
+    <ol style="padding-left:18px;margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+      <li>Go to <strong>⚙️ Settings</strong> and add your player names (min 2, max 5).</li>
+      <li>Add any base games, crossovers, and oversized cards you own. Batman and Superman are included by default.</li>
+      <li>Head to <strong>🎲 Log Game</strong> and record your first session — pick a base game, crossover, date, players, and oversized cards.</li>
+      <li>Check <strong>📊 Game Stats</strong> and <strong>📜 Game History</strong> to track performance over time.</li>
+    </ol>
+    <p style="margin-top:12px;font-size:13px;color:var(--text-dim);">All data is stored in your browser's <code>localStorage</code>. Use <strong>Settings &rsaquo; Data &rsaquo; Export JSON</strong> to back up or transfer your history.</p>
   </div>
+
+  <div class="home-about card">
+    <h3>Features</h3>
+    <ul style="padding-left:18px;margin-top:8px;display:flex;flex-direction:column;gap:5px;">
+      <li><strong>Log Games</strong> — Base game, crossover, date, players, oversized cards, scores (VPs), and nemesis defeats per session</li>
+      <li><strong>Additional Cards</strong> — Track promos and other extras per session from a saved library, filtered by type</li>
+      <li><strong>Crisis Mode</strong> — Cooperative crossovers with team win/loss and a shared nemesis count</li>
+      <li><strong>Rivals Mode</strong> — 2-player-only sets flagged in Settings; enforced on the Log Game screen</li>
+      <li><strong>Game History</strong> — Filter by base game or crossover; sort by #, date, game, crossover, or type; edit or delete any entry</li>
+      <li><strong>Player Stats</strong> — Win rates, average score, nemesis stats, most-used oversized cards, and Chart.js bar charts; compare two players side by side</li>
+      <li><strong>Overall Stats</strong> — Aggregate game counts, most-played sets, top oversized cards, and crisis win rates</li>
+      <li><strong>Archive &amp; Restore</strong> — Archive players, games, crossovers, and cards without losing history; restore from a single combined Archived section</li>
+      <li><strong>Ban &amp; Unban</strong> — Mark oversized or additional cards as banned so they can't be picked in new games; labelled in history and stats</li>
+      <li><strong>No build step</strong> — Plain HTML, CSS, and vanilla JS; open <code>index.html</code> directly in any modern browser</li>
+    </ul>
+  </div>
+
+
 </main>
 
 <!-- ===== Log Game Page ===== -->
@@ -297,51 +328,21 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminArchivedBody','adminArchivedChev')">
-      <h3 style="margin:0;">Archived Players</h3><span id="adminArchivedChev">▶</span>
+      <h3 style="margin:0;">Archived</h3><span id="adminArchivedChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminArchivedBody">
-      <p class="hint" style="margin-top:10px;">Players removed from the active roster who still appear in your game history. Restore them to make them selectable again in new games.</p>
-      <div id="adminArchivedPlayers"></div>
+      <p class="hint" style="margin-top:10px;">Items removed from the active lists. Restoring an item adds it back without affecting game history.</p>
+      <div id="adminArchived"></div>
     </div>
   </div>
 
   <div class="card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('adminArchivedGamesBody','adminArchivedGamesChev')">
-      <h3 style="margin:0;">Archived Base Games</h3><span id="adminArchivedGamesChev">▶</span>
+    <div class="collapsible-header" onclick="toggleSection('adminBannedCardsBody','adminBannedCardsChev')">
+      <h3 style="margin:0;">Banned Cards</h3><span id="adminBannedCardsChev">▶</span>
     </div>
-    <div class="collapsible-body collapsed" id="adminArchivedGamesBody">
-      <p class="hint" style="margin-top:10px;">Base games removed from the active list. Restoring adds them back to the Base Games section without affecting game history.</p>
-      <div id="adminArchivedGames"></div>
-    </div>
-  </div>
-
-  <div class="card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('adminArchivedCrossBody','adminArchivedCrossChev')">
-      <h3 style="margin:0;">Archived Crossovers</h3><span id="adminArchivedCrossChev">▶</span>
-    </div>
-    <div class="collapsible-body collapsed" id="adminArchivedCrossBody">
-      <p class="hint" style="margin-top:10px;">Crossovers removed from the active list. Restoring adds them back to the Crossovers section without affecting game history.</p>
-      <div id="adminArchivedCrossovers"></div>
-    </div>
-  </div>
-
-  <div class="card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('adminArchivedCardsBody','adminArchivedCardsChev')">
-      <h3 style="margin:0;">Archived Additional Cards</h3><span id="adminArchivedCardsChev">▶</span>
-    </div>
-    <div class="collapsible-body collapsed" id="adminArchivedCardsBody">
-      <p class="hint" style="margin-top:10px;">Additional cards removed from the library. Restoring adds them back to the Saved Additional Cards section.</p>
-      <div id="adminArchivedCards"></div>
-    </div>
-  </div>
-
-  <div class="card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('adminArchivedOversizedBody','adminArchivedOversizedChev')">
-      <h3 style="margin:0;">Archived Oversized Cards</h3><span id="adminArchivedOversizedChev">▶</span>
-    </div>
-    <div class="collapsible-body collapsed" id="adminArchivedOversizedBody">
-      <p class="hint" style="margin-top:10px;">Oversized cards removed from the library. Restoring adds them back to the Saved Oversized Cards section.</p>
-      <div id="adminArchivedOversized"></div>
+    <div class="collapsible-body collapsed" id="adminBannedCardsBody">
+      <p class="hint" style="margin-top:10px;">Cards banned from play because they may be game-breaking. Banned cards cannot be selected in new games and are labelled in history and stats. Unban to restore them to the active list.</p>
+      <div id="adminBannedCards"></div>
     </div>
   </div>
 
@@ -375,7 +376,7 @@
 <script src="js/game.js"></script>
 <script src="js/history.js"></script>
 <script src="js/stats.js"></script>
-<script src="js/admin.js"></script>
+<script src="js/settings.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

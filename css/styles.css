@@ -255,8 +255,9 @@ button.success:hover { background:#16a34a; }
   border:1px solid #1e3a5f; letter-spacing:.03em;
 }
 
-/* ===== Archived / Deleted badges ===== */
-.archived-badge {
+/* ===== Archived / Deleted / Banned badges ===== */
+.archived-badge,
+.banned-badge {
   background:var(--border); color:var(--text-muted);
   font-size:10px; padding:1px 6px; border-radius:999px; margin-left:4px;
   vertical-align:middle; font-style:italic;

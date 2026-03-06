@@ -13,6 +13,7 @@ A browser-based tracker for the **DC Deck-Building Game** by Cryptozoic Entertai
 - **Overall Stats** — Aggregate game counts, most-played sets, top oversized cards used, and game outcome breakdown
 - **Settings** — Manage players, base games, crossovers, oversized cards, and additional cards (Promo/Other); set default player slots for new games
 - **Archive & Restore** — Archive players, base games, crossovers, additional cards, and oversized cards instead of permanently deleting them; restore any archived item from the Settings archive sections; archived items are tagged in history and stats
+- **Ban & Unban** — Ban oversized cards or additional cards to permanently block them from being selected in new games; banned cards are labelled in game history and stats; unbanning restores them to the active list
 - **Inline confirmations** — All destructive actions use inline Yes/No prompts; no browser popups
 - **Data portability** — Export all data as JSON and re-import on any device
 - **Dark/light theme** — Persisted per browser
@@ -59,7 +60,7 @@ dc-deck-building-tracker/
     ├── game.js         # Log/edit game form logic
     ├── history.js      # Game history list and filtering
     ├── stats.js        # Player and overall stats with Chart.js
-    ├── admin.js        # Settings page (players, sets, cards)
+    ├── settings.js     # Settings page (players, sets, cards, bans)
     └── main.js         # App bootstrap and global render orchestration
 ```
 
@@ -73,7 +74,8 @@ dc-deck-building-tracker/
 | Crossovers / Expansions | Add custom crossovers; check **Crisis** for cooperative crossovers. |
 | Saved Additional Cards | Promo and other extra cards selectable during game logging. Filter persisted per browser. |
 | Saved Oversized Cards | Hero/villain oversized cards selectable per player. Minimum of 2 required. Filter defaults to Original Core Set and is persisted per browser. |
-| Archived sections | Players, base games, crossovers, additional cards, and oversized cards can all be archived and restored. Archived items are tagged in game history and stats. |
+| Archived | Players, base games, crossovers, additional cards, and oversized cards can all be archived and restored from a single combined section. Archived items are tagged in game history and stats. |
+| Banned Cards | Oversized and additional cards banned for being potentially game-breaking. Banned cards cannot be selected in new games and are labelled in history/stats. At least 2 active oversized cards must remain. Unbanning restores a card to the active list. |
 | Data | Export your full data as JSON for backup or transfer; re-import on any device. Reset wipes all data. |
 
 ## Data Storage
