@@ -10,18 +10,54 @@ const DEFAULT_GAMES = [
   { name: "Original Core Set (2012)" },
   { name: "Heroes Unite (2014)" },
   { name: "Forever Evil (2014)" },
+  { name: "Rivals: Batman vs. The Joker (2014)", isRivals: true },
   { name: "Teen Titans (2015)" },
+  { name: "Confrontations (2017)" },
+  { name: "Dark Nights: Metal (2018)" },
+  { name: "Rivals: Green Lantern vs. Sinestro (2018)", isRivals: true },
   { name: "Injustice (2023)" },
+  { name: "Rivals: The Flash vs. Reverse-Flash (2023)", isRivals: true },
   { name: "Justice League: Dark (2024)" },
+  { name: "Rivals: Shazam! vs. Black Adam (2024)", isRivals: true },
   { name: "Teen Titans Go! (2025)" },
   { name: "Arkham Asylum (2025)" },
+  { name: "Rivals: Superman vs. Lex Luthor (2025)", isRivals: true },
+];
+
+/* ===== Default crossover packs & crisis expansions ===== */
+const DEFAULT_CROSSOVERS = [
+  { name: "None", isCrisis: false },
+  { name: "Crossover Pack 1: Justice Society of America (2015)", isCrisis: false },
+  { name: "Crossover Pack 2: Arrow (2015)",                      isCrisis: false },
+  { name: "Crossover Pack 3: Legion of Super-Heroes (2015)",     isCrisis: false },
+  { name: "Crossover Pack 4: Watchmen (2015)",                   isCrisis: false },
+  { name: "Crossover Pack 5: The Rogues (2017)",                 isCrisis: false },
+  { name: "Crossover Pack 6: Birds of Prey (2017)",              isCrisis: false },
+  { name: "Crossover Pack 7: New Gods (2018)",                   isCrisis: false },
+  { name: "Crossover Pack 8: Batman Ninja (2019)",               isCrisis: false },
+  { name: "Crossover Pack 9: DC Bombshells (2023)",              isCrisis: false },
+  { name: "Crossover Pack 10: Flashpoint (2024)",                isCrisis: false },
+  { name: "Crossover Pack 11: Dark Knights Rising (2025)",       isCrisis: false },
+  { name: "Crossover Pack 12: Hush (2025)",                      isCrisis: false },
+  { name: "Crisis Expansion Pack 1 (2014)",                      isCrisis: true },
+  { name: "Crisis Expansion Pack 2 (2015)",                      isCrisis: true },
+  { name: "Crisis Expansion Pack 3 (2016)",                      isCrisis: true },
+  { name: "Crisis Expansion Pack 4 (2018)",                      isCrisis: true },
+  { name: "Crisis Expansion Pack 5: Dark Nights – Death Metal (2025)", isCrisis: true },
+  { name: "Justice League Dark Expansion (2024)",                      isCrisis: false },
+  { name: "Legion of Doom Expansion Pack (2024)",                      isCrisis: false },
+  { name: "Crossover Crisis Pack 1 (2024)",                            isCrisis: true },
+  { name: "Arkham Asylum Shadows Expansion (2025)",                    isCrisis: false },
+  { name: "Super Friends Expansion Pack (2025)",                       isCrisis: false },
+  { name: "Peacemaker Pack (2025)",                                    isCrisis: false },
+  { name: "Teen Titans Go! Expansion (2025)",                          isCrisis: false },
 ];
 
 /* ===== App data ===== */
 const DEFAULT_DATA = {
   players:          ["Player 1", "Player 2"],
   games:            JSON.parse(JSON.stringify(DEFAULT_GAMES)),
-  crossovers:       [{ name: "None", isCrisis: false }],
+  crossovers:       JSON.parse(JSON.stringify(DEFAULT_CROSSOVERS)),
   knownCards:       [],
   knownOversized:   [
     { name: "Batman",   fromSet: "Original Core Set (2012)" },
@@ -94,6 +130,21 @@ function _normalise(d) {
   if (!d.games.some(g => g.name === "Original Core Set (2012)")) {
     d.games.unshift({ name: "Original Core Set (2012)" });
   }
+
+  // Seed default base games (skip any the user archived)
+  DEFAULT_GAMES.forEach(def => {
+    const inActive   = d.games.some(g => g.name === def.name);
+    const inArchived = d.archivedGames.some(g => g.name === def.name);
+    if (!inActive && !inArchived) d.games.push({ isRivals: false, ...def });
+  });
+
+  // Seed default crossover packs & crisis expansions (skip any the user archived)
+  if (!d.crossovers) d.crossovers = [{ name: "None", isCrisis: false }];
+  DEFAULT_CROSSOVERS.forEach(def => {
+    const inActive   = d.crossovers.some(c => c.name === def.name);
+    const inArchived = d.archivedCrossovers.some(c => c.name === def.name);
+    if (!inActive && !inArchived) d.crossovers.push({ ...def });
+  });
 
   // Seed default oversized cards
   const _defaults = [
