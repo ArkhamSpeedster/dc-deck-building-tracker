@@ -10,12 +10,15 @@ A browser-based fan-made tracker for the **DC Deck-Building Game** by Cryptozoic
 - **Additional Cards** — Track promo and other extra cards per game session; select from a saved library by type
 - **Crisis Mode** — Full support for team-based Crisis crossovers, including team win/loss and shared nemesis count
 - **Rivals Mode** — Flag base games as Rivals (2-player max); enforced on the Log Game screen
-- **Game History** — Browse and filter past games by base game or crossover; sort by game #, date, base game, crossover, or type; edit or delete any entry
-- **Player Stats** — Win rates, average score, nemesis stats, hero usage, and Chart.js bar charts; compare two players side by side
-- **Overall Stats** — Aggregate game counts, most-played sets, top oversized cards used, and game outcome breakdown
+- **Session Comments** — Add optional notes to a logged game for memorable plays, house rules, or other context; comments appear collapsed in Game History
+- **Game History** — Browse and filter past games by base game or crossover; sort by game #, date, base game, crossover, or type; edit or delete any entry; player rows keep names, oversized cards, scores, nemesis counts, and results aligned for readability
+- **Player Stats** — Win rates, average score, nemesis stats, placements, most-used oversized cards, Rivals/Crisis breakdowns, and Chart.js bar charts; compare two players side by side
+- **Overall Stats** — Aggregate game counts, most-played sets, sortable set/crossover tables, top oversized cards used, and game outcome breakdown
 - **Settings** — Manage players, base games, crossovers, oversized cards, and additional cards (Promo/Other); set default player slots for new games
 - **Archive & Restore** — Archive players, base games, crossovers, additional cards, and oversized cards instead of permanently deleting them; restore any archived item from the Settings archive sections; archived items are tagged in history and stats
 - **Ban & Unban** — Ban oversized cards or additional cards to permanently block them from being selected in new games; banned cards are labelled in game history and stats; unbanning restores them to the active list
+- **Archived Player Stats** — View archived players separately without returning them to the active roster
+- **Validation & Safeguards** — Prevent duplicate players, duplicate oversized cards, duplicate additional cards, invalid scores, and leaving Settings with unsaved changes
 - **Inline confirmations** — All destructive actions use inline Yes/No prompts; no browser popups
 - **Data portability** — Export all data as JSON and re-import on any device
 - **Dark/light theme** — Persisted per browser
@@ -82,14 +85,17 @@ Rivals sets are limited to 2 players; Crisis expansions use the cooperative team
 2. Open `index.html` in any modern browser
 3. Go to **Settings** and add your player names
 4. Start logging games via **Log Game**
+5. Add optional session comments when you want a note preserved with the game history
 
-No installation, dependencies, or internet connection required (Chart.js is loaded from a CDN for stats charts).
+No installation or build step is required. The app itself is plain static files; Chart.js is loaded from a CDN for the stats charts, so charts require network access unless that script is cached by the browser.
 
 ## Project Structure
 
 ```
 dc-deck-building-tracker/
 ├── index.html          # Single-page app shell and all page markup
+├── img/
+│   └── dc-logo.png     # Home page logo asset
 ├── css/
 │   └── styles.css      # All styling, themes, and layout
 └── js/
@@ -116,6 +122,22 @@ dc-deck-building-tracker/
 | Banned Cards | Oversized and additional cards banned for being potentially game-breaking. Banned cards cannot be selected in new games and are labelled in history/stats. At least 2 active oversized cards must remain. Unbanning restores a card to the active list. |
 | Data | Export your full data as JSON for backup or transfer; re-import on any device. Reset wipes all data. |
 
+## Game Logging Notes
+
+- Games receive a stable game number when saved; history defaults to newest first.
+- Normal and Rivals games calculate Win/Loss/Tie and player placement from scores.
+- Crisis games store team result and team nemesis count instead of individual scores.
+- Additional cards can be filtered by card type while logging.
+- Oversized card dropdowns can be filtered by set and prevent choosing the same oversized card twice in one game.
+- Editing a game removes the original entry temporarily; cancelling the edit restores it.
+- Resetting the Log Game form clears current unsaved form fields and comments.
+
+## Stats Notes
+
+- Player stats split normal, Rivals, and Crisis results so cooperative games do not distort competitive win rates.
+- Overall stats include normal base-game counts, Rivals set counts, crossover usage, Crisis win rates, and top oversized card usage.
+- Archived and banned labels remain visible in history and stats so older entries stay understandable after Settings changes.
+
 ## Data Storage
 
-All data is saved to `localStorage` under the key `dcData`. Settings panel filter preferences are stored separately under `dcAdminCardFilter` and `dcAdminOversizedFilter`. All `localStorage` values are browser-specific — clearing site data in the browser will remove them. Use **Settings > Data > Export JSON** to back up your history or transfer it to another browser/device.
+All data is saved to `localStorage` under the key `dcData`. Theme preference is saved under `dcTheme`. Settings panel filter preferences are stored separately under `dcAdminCardFilter` and `dcAdminOversizedFilter`. All `localStorage` values are browser-specific — clearing site data in the browser will remove them. Use **Settings > Data > Export JSON** to back up your history or transfer it to another browser/device.

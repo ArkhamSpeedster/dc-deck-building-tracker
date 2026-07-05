@@ -180,6 +180,12 @@
     <input type="number" id="crisisNemesis" min="0" placeholder="0" style="width:90px;">
   </div>
 
+  <div class="card">
+    <h3>Comments</h3>
+    <p class="hint">Optional notes about this session — memorable plays, house rules, anything worth remembering.</p>
+    <textarea id="gameCommentInput" rows="3" maxlength="1000" placeholder="e.g. Batman pulled off a 25 Power final turn..." oninput="_markGameDirty()"></textarea>
+  </div>
+
   <div class="card" id="saveBarNormal">
     <button class="primary" id="saveGameBtn"       onclick="saveGame()">Save Game</button>
     <button class="primary" id="saveGameCrisisBtn" onclick="saveGame()" style="display:none;">Save Crisis Game</button>

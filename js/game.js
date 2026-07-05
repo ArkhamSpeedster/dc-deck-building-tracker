@@ -729,6 +729,9 @@ function saveGame() {
     entry = { gameNum, game: base, cross, isCrisis: false, isRivals: rivals, players, additional, date, dateSort: dateSortKey(date) };
   }
 
+  const comment = (document.getElementById("gameCommentInput")?.value || "").trim();
+  if (comment) entry.comment = comment;
+
   data.history.push(entry);
   _sortHistory();
 
@@ -847,6 +850,8 @@ function initGamePage() {
   updateAddPlayerBtn();
 
   document.getElementById("additionalCardsContainer").innerHTML = "";
+  const commentInput = document.getElementById("gameCommentInput");
+  if (commentInput) commentInput.value = "";
   document.getElementById("crisisNemesis").value = "";
   document.getElementById("crisisWin").checked = true;
   document.getElementById("gameDateInput").value = toDateInputValue(null);

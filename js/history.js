@@ -102,50 +102,49 @@ function renderHistory() {
     <th class="sortable" onclick="sortHistoryBy('game')">Base Game ${_histSortInd('game')}</th>
     <th class="sortable" onclick="sortHistoryBy('cross')">Crossover ${_histSortInd('cross')}</th>
     <th class="sortable" onclick="sortHistoryBy('type')">Type ${_histSortInd('type')}</th>
-    <th>Players &amp; Oversized</th><th class="col-score">Score (VPs)</th><th class="col-nemesis">Nemesis Defeated</th><th>Result</th><th>Additional Cards</th><th>Actions</th>
+    <th class="history-player-matrix-head" colspan="4">
+      <div class="history-player-head-grid">
+        <span>Players &amp; Oversized</span>
+        <span>Score (VPs)</span>
+        <span>Nemesis Defeated</span>
+        <span>Result</span>
+      </div>
+    </th><th>Additional Cards</th><th>Actions</th>
   </tr></thead>`;
   const tbody = document.createElement("tbody");
 
   filtered.forEach(({h,i}, rowIdx) => {
     const tr = document.createElement("tr");
-    let playerCell, scoreCell, nemesisCell, resultCell;
+    let playerRows;
 
     if (h.isCrisis) {
-      // Players column: name + oversized per player row
-      playerCell = h.players.map(p => {
+      playerRows = h.players.map(p => {
         const ov = (p.oversizedCard||p.heroUsed||"").trim();
         const ovDel = ov ? _oversizedTag(ov, p.oversizedFrom||p.heroFrom||"") : "";
         const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${ov}${p.oversizedFrom?` <span class="hero-from">(${p.oversizedFrom})</span>`:""}${ovDel}</span></div>` : "";
-        return `<div class="player-row-block"><div class="pname-cell">${p.name}${_playerTag(p.name)}</div>${ovLine}</div>`;
+        const resultClass = h.teamWon ? "win" : "loss";
+        return `<div class="hist-player-grid-row">
+          <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell">${p.name}${_playerTag(p.name)}</div>${ovLine}</div>
+          <div class="hist-player-grid-cell hist-player-stat hist-muted">—</div>
+          <div class="hist-player-grid-cell hist-player-stat">Team: <strong>${h.teamNemesis||0}</strong></div>
+          <div class="hist-player-grid-cell hist-player-result result-${resultClass}">${h.teamWon?"✔ Win":"✘ Loss"}</div>
+        </div>`;
       }).join("");
-      // Score col: dash per player row
-      scoreCell = h.players.map(() => `<div class="player-row-block"><div class="pname-cell" style="color:var(--text-dim);">—</div></div>`).join("");
-      // Nemesis col: team total spans all rows
-      nemesisCell = `<div class="hist-team-nemesis">Team: <strong>${h.teamNemesis||0}</strong></div>`;
-      // Result col: team result
-      resultCell = `<div class="result-${h.teamWon?"win":"loss"} hist-team-result">${h.teamWon?"✔ Win":"✘ Loss"}</div>`;
     } else {
-      // Players column: name + oversized per player row
-      playerCell = h.players.map(p => {
+      playerRows = h.players.map(p => {
         const ov = (p.oversizedCard||p.heroUsed||"").trim();
         const ovDel2 = ov ? _oversizedTag(ov, p.oversizedFrom||p.heroFrom||"") : "";
         const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${ov}${p.oversizedFrom?` <span class="hero-from">(${p.oversizedFrom})</span>`:""}${ovDel2}</span></div>` : "";
-        const resultClass = p.result ? `pname-${p.result.toLowerCase()}` : "";
-        return `<div class="player-row-block"><div class="pname-cell ${resultClass}">${p.name}${_playerTag(p.name)}</div>${ovLine}</div>`;
-      }).join("");
-      // Score col: one row per player, aligned with player rows
-      scoreCell = h.players.map(p =>
-        `<div class="player-row-block"><div class="pname-cell">${p.score??0}</div></div>`
-      ).join("");
-      // Nemesis col: one row per player
-      nemesisCell = h.players.map(p =>
-        `<div class="player-row-block"><div class="pname-cell">${p.nemesis??0}</div></div>`
-      ).join("");
-      // Result col: one row per player with placement
-      resultCell = h.players.map(p => {
+        const resultTone = (p.result||"").toLowerCase();
+        const resultClass = resultTone ? `pname-${resultTone}` : "";
         const placeExtra = p.place && p.place > 1 && p.result === "Loss"
-          ? ` <span style="font-size:11px;opacity:.7;">(${_placeLabel(p.place)})</span>` : "";
-        return `<div class="player-row-block"><div class="result-${(p.result||"").toLowerCase()}">${p.result||""}${placeExtra}</div></div>`;
+          ? ` <span class="hist-place-label">(${_placeLabel(p.place)})</span>` : "";
+        return `<div class="hist-player-grid-row hist-result-${resultTone}">
+          <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell ${resultClass}">${p.name}${_playerTag(p.name)}</div>${ovLine}</div>
+          <div class="hist-player-grid-cell hist-player-stat">${p.score??0}</div>
+          <div class="hist-player-grid-cell hist-player-stat">${p.nemesis??0}</div>
+          <div class="hist-player-grid-cell hist-player-result result-${resultTone}">${p.result||""}${placeExtra}</div>
+        </div>`;
       }).join("");
     }
 
@@ -161,16 +160,18 @@ function renderHistory() {
     const insertionNum = h.gameNum != null ? h.gameNum : (i + 1);
     const gameNum = `<span class="game-num-badge">#${insertionNum}</span>`;
 
+    // Comment — collapsed by default so long notes don't bloat the table
+    const commentHtml = h.comment
+      ? `<details class="hist-comment"><summary>💬 Comment</summary><div class="hist-comment-body">${_esc(h.comment)}</div></details>`
+      : "";
+
     tr.innerHTML = `
       <td style="text-align:center;">${gameNum}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--text-muted);">${h.date}</td>
       <td>${h.game}${_gameTag(h.game)}</td>
       <td>${h.cross}${_crossTag(h.cross)}</td>
       <td>${h.isCrisis?'<span class="badge-crisis">Crisis</span>':h.isRivals?'<span class="badge-rivals">Rivals</span>':'<span class="badge-normal">Normal</span>'}</td>
-      <td class="player-col">${playerCell}</td>
-      <td class="col-score">${scoreCell}</td>
-      <td class="col-nemesis">${nemesisCell}</td>
-      <td class="col-result">${resultCell}</td>
+      <td class="history-player-matrix-cell" colspan="4"><div class="history-player-matrix">${playerRows}</div>${commentHtml}</td>
       <td style="font-size:12px;">${additionalStr}</td>
       <td style="white-space:nowrap;">
         <button class="primary" onclick="editGame(${i})">Edit</button>
@@ -273,6 +274,9 @@ function editGame(i) {
         document.getElementById("crisisWin").checked   = h.teamWon !== false;
         document.getElementById("crisisNemesis").value = h.teamNemesis || 0;
       }
+
+      const commentInput = document.getElementById("gameCommentInput");
+      if (commentInput) commentInput.value = h.comment || "";
 
       // Show edit mode banner
       document.getElementById("editModeNum").textContent = h.gameNum ? `#${h.gameNum}` : "";
