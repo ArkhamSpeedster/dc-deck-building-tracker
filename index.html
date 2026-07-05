@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DC Deck-Building Game Tracker</title>
+  <title>Unofficial DC Deck-Building Game Tracker</title>
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -16,7 +16,7 @@
 <div id="drawerOverlay" onclick="closeDrawer()"></div>
 
 <header>
-  <h1>DC Deck-Building Tracker</h1>
+  <h1>Unofficial DC Deck-Building Tracker</h1>
   <div class="header-right">
     <button class="header-btn" onclick="showPage('homePage')" title="Home">🏠</button>
     <button class="header-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle theme">☀️</button>
@@ -41,8 +41,8 @@
 <!-- ===== Home Page ===== -->
 <main class="page active" id="homePage">
   <div class="home-hero card">
-    <div class="home-logo">🦸</div>
-    <h2 class="home-title">DC Deck-Building Game Tracker</h2>
+    <img class="home-logo" src="img/dc-logo.png" alt="DC Deck-Building Game logo" width="96" height="96">
+    <h2 class="home-title">Unofficial DC Deck-Building Game Tracker</h2>
     <p class="home-subtitle">Track every game, every hero, every nemesis defeated.</p>
 
     <!-- Quick nav sits right under the hero tagline -->
@@ -370,6 +370,12 @@
     </div>
   </div>
 </main>
+
+<footer class="site-footer">
+  <p><strong>Unofficial fan project.</strong> This tracker is not affiliated with, endorsed by, sponsored by, or associated with Cryptozoic Entertainment, DC Comics, or Warner Bros. Discovery in any way.</p>
+  <p>The <em>DC Deck-Building Game</em> is a product of Cryptozoic Entertainment. DC, the DC logo, and all related characters, names, and elements are trademarks of and &copy; DC Comics / Warner Bros. Discovery. All trademarks and copyrighted material are the property of their respective owners and are referenced here for identification purposes only.</p>
+  <p>This is a free, non-commercial tool for personal game tracking. No official artwork, cards, or rules content is reproduced. All data you enter stays in your own browser — nothing is collected or transmitted.</p>
+</footer>
 
 <script src="js/data.js"></script>
 <script src="js/ui.js"></script>

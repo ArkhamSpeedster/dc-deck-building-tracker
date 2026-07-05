@@ -1,6 +1,8 @@
-# DC Deck-Building Game Tracker
+# Unofficial DC Deck-Building Game Tracker
 
-A browser-based tracker for the **DC Deck-Building Game** by Cryptozoic Entertainment. Log game sessions, track player performance, and view stats — all stored locally in your browser with no server required.
+A browser-based fan-made tracker for the **DC Deck-Building Game** by Cryptozoic Entertainment. Log game sessions, track player performance, and view stats — all stored locally in your browser with no server required.
+
+> **Disclaimer:** This is an unofficial fan project with no affiliation to, endorsement by, or association with Cryptozoic Entertainment, DC Comics, or Warner Bros. Discovery. The *DC Deck-Building Game* is a product of Cryptozoic Entertainment; DC and all related characters, names, logos, and elements are trademarks of and © DC Comics / Warner Bros. Discovery. All trademarks are referenced for identification purposes only. This tool is free, non-commercial, and reproduces no official artwork, cards, or rules content.
 
 ## Features
 
@@ -23,18 +25,54 @@ A browser-based tracker for the **DC Deck-Building Game** by Cryptozoic Entertai
 
 Base games pre-loaded (with release year):
 
-| Set | Year |
-|-----|------|
-| Original Core Set | 2012 |
-| Heroes Unite | 2014 |
-| Forever Evil | 2014 |
-| Teen Titans | 2015 |
-| Injustice | 2023 |
-| Justice League: Dark | 2024 |
-| Teen Titans Go! | 2025 |
-| Arkham Asylum | 2025 |
+| Set | Year | Mode |
+|-----|------|------|
+| Original Core Set | 2012 | |
+| Heroes Unite | 2014 | |
+| Forever Evil | 2014 | |
+| Rivals: Batman vs. The Joker | 2014 | Rivals |
+| Teen Titans | 2015 | |
+| Confrontations | 2017 | |
+| Dark Nights: Metal | 2018 | |
+| Rivals: Green Lantern vs. Sinestro | 2018 | Rivals |
+| Injustice | 2023 | |
+| Rivals: The Flash vs. Reverse-Flash | 2023 | Rivals |
+| Justice League: Dark | 2024 | |
+| Rivals: Shazam! vs. Black Adam | 2024 | Rivals |
+| Teen Titans Go! | 2025 | |
+| Arkham Asylum | 2025 | |
+| Rivals: Superman vs. Lex Luthor | 2025 | Rivals |
 
-Additional base games and crossovers can be added in Settings.
+Crossovers and expansions pre-loaded:
+
+| Expansion | Year | Mode |
+|-----------|------|------|
+| Crossover Pack 1: Justice Society of America | 2015 | |
+| Crossover Pack 2: Arrow | 2015 | |
+| Crossover Pack 3: Legion of Super-Heroes | 2015 | |
+| Crossover Pack 4: Watchmen | 2015 | |
+| Crossover Pack 5: The Rogues | 2017 | |
+| Crossover Pack 6: Birds of Prey | 2017 | |
+| Crossover Pack 7: New Gods | 2018 | |
+| Crossover Pack 8: Batman Ninja | 2019 | |
+| Crossover Pack 9: DC Bombshells | 2023 | |
+| Crossover Pack 10: Flashpoint | 2024 | |
+| Crossover Pack 11: Dark Knights Rising | 2025 | |
+| Crossover Pack 12: Hush | 2025 | |
+| Crisis Expansion Pack 1 | 2014 | Crisis |
+| Crisis Expansion Pack 2 | 2015 | Crisis |
+| Crisis Expansion Pack 3 | 2016 | Crisis |
+| Crisis Expansion Pack 4 | 2018 | Crisis |
+| Crisis Expansion Pack 5: Dark Nights – Death Metal | 2025 | Crisis |
+| Justice League Dark Expansion | 2024 | |
+| Legion of Doom Expansion Pack | 2024 | |
+| Crossover Crisis Pack 1 | 2024 | Crisis |
+| Arkham Asylum Shadows Expansion | 2025 | |
+| Super Friends Expansion Pack | 2025 | |
+| Peacemaker Pack | 2025 | |
+| Teen Titans Go! Expansion | 2025 | |
+
+Rivals sets are limited to 2 players; Crisis expansions use the cooperative team rules. All defaults are seeded into existing saved data on load — anything you archive stays archived. Additional base games and crossovers can be added in Settings.
 
 > **Compatibility:** Supports the standard competitive DC Deck-Building Game format. Solo play and the *Rebirth* DC Deck-Building Game are not yet supported.
 
