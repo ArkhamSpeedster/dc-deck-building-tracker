@@ -69,8 +69,8 @@ function _oversizedTag(name, fromSet) {
 
 function renderHistory() {
   const data = App.data;
-  document.getElementById("filterGame").innerHTML  = "<option value=''>All Games</option>"      + data.games.map(g=>`<option value="${g.name}">${g.name}</option>`).join("");
-  document.getElementById("filterCross").innerHTML = "<option value=''>All Crossovers</option>" + data.crossovers.map(c=>`<option value="${c.name}">${c.name}</option>`).join("");
+  document.getElementById("filterGame").innerHTML  = "<option value=''>All Games</option>"      + data.games.map(g=>`<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
+  document.getElementById("filterCross").innerHTML = "<option value=''>All Crossovers</option>" + data.crossovers.map(c=>`<option value="${_esc(c.name)}">${_esc(c.name)}</option>`).join("");
   document.getElementById("filterGame").value  = _filterGame;
   document.getElementById("filterCross").value = _filterCross;
   const filtered = data.history
@@ -127,29 +127,32 @@ function renderHistory() {
       playerRows = h.players.map(p => {
         const ov = (p.oversizedCard||p.heroUsed||"").trim();
         const ovDel = ov ? _oversizedTag(ov, p.oversizedFrom||p.heroFrom||"") : "";
-        const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${ov}${p.oversizedFrom?` <span class="hero-from">(${p.oversizedFrom})</span>`:""}${ovDel}</span></div>` : "";
+        const ovFrom = p.oversizedFrom || p.heroFrom || "";
+        const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${_esc(ov)}${ovFrom?` <span class="hero-from">(${_esc(ovFrom)})</span>`:""}${ovDel}</span></div>` : "";
         const resultClass = h.teamWon ? "win" : "loss";
         return `<div class="hist-player-grid-row">
-          <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell">${p.name}${_playerTag(p.name)}</div>${ovLine}</div>
+          <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell">${_esc(p.name)}${_playerTag(p.name)}</div>${ovLine}</div>
           <div class="hist-player-grid-cell hist-player-stat hist-muted">—</div>
-          <div class="hist-player-grid-cell hist-player-stat">Team: <strong>${h.teamNemesis||0}</strong></div>
+          <div class="hist-player-grid-cell hist-player-stat">Team: <strong>${_esc(h.teamNemesis||0)}</strong></div>
           <div class="hist-player-grid-cell hist-player-result result-${resultClass}">${h.teamWon?"✔ Win":"✘ Loss"}</div>
         </div>`;
       }).join("");
     } else {
       playerRows = h.players.map(p => {
         const ov = (p.oversizedCard||p.heroUsed||"").trim();
-        const ovDel2 = ov ? _oversizedTag(ov, p.oversizedFrom||p.heroFrom||"") : "";
-        const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${ov}${p.oversizedFrom?` <span class="hero-from">(${p.oversizedFrom})</span>`:""}${ovDel2}</span></div>` : "";
-        const resultTone = (p.result||"").toLowerCase();
+        const ovFrom = p.oversizedFrom || p.heroFrom || "";
+        const ovDel2 = ov ? _oversizedTag(ov, ovFrom) : "";
+        const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${_esc(ov)}${ovFrom?` <span class="hero-from">(${_esc(ovFrom)})</span>`:""}${ovDel2}</span></div>` : "";
+        const rawResult = (p.result || "").toString();
+        const resultTone = ["win", "loss", "tie"].includes(rawResult.toLowerCase()) ? rawResult.toLowerCase() : "";
         const resultClass = resultTone ? `pname-${resultTone}` : "";
         const placeExtra = p.place && p.place > 1 && p.result === "Loss"
           ? ` <span class="hist-place-label">(${_placeLabel(p.place)})</span>` : "";
         return `<div class="hist-player-grid-row hist-result-${resultTone}">
-          <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell ${resultClass}">${p.name}${_playerTag(p.name)}</div>${ovLine}</div>
-          <div class="hist-player-grid-cell hist-player-stat">${p.score??0}</div>
-          <div class="hist-player-grid-cell hist-player-stat">${p.nemesis??0}</div>
-          <div class="hist-player-grid-cell hist-player-result result-${resultTone}">${p.result||""}${placeExtra}</div>
+          <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell ${resultClass}">${_esc(p.name)}${_playerTag(p.name)}</div>${ovLine}</div>
+          <div class="hist-player-grid-cell hist-player-stat">${_esc(p.score??0)}</div>
+          <div class="hist-player-grid-cell hist-player-stat">${_esc(p.nemesis??0)}</div>
+          <div class="hist-player-grid-cell hist-player-result result-${resultTone}">${_esc(rawResult)}${placeExtra}</div>
         </div>`;
       }).join("");
     }
@@ -160,12 +163,12 @@ function renderHistory() {
           const set = typeof c==="string"?"Other":(c.set || c.type || "Other");
           const cardType = typeof c==="string"?"":(c.cardType || "");
           const dtag = _cardTag(n, set);
-          return `<span class="card-tag">${set?`<em class="card-type-label">${set}</em> `:""}${n}${cardType?` <span class="hero-from">(${cardType})</span>`:""}${dtag}</span>`;
+          return `<span class="card-tag">${set?`<em class="card-type-label">${_esc(set)}</em> `:""}${_esc(n)}${cardType?` <span class="hero-from">(${_esc(cardType)})</span>`:""}${dtag}</span>`;
         }).join(" ")
       : "—";
 
     const insertionNum = h.gameNum != null ? h.gameNum : (i + 1);
-    const gameNum = `<span class="game-num-badge">#${insertionNum}</span>`;
+    const gameNum = `<span class="game-num-badge">#${_esc(insertionNum)}</span>`;
 
     // Comment — collapsed by default so long notes don't bloat the table
     const commentHtml = h.comment
@@ -174,9 +177,9 @@ function renderHistory() {
 
     tr.innerHTML = `
       <td style="text-align:center;">${gameNum}</td>
-      <td style="white-space:nowrap;font-size:12px;color:var(--text-muted);">${h.date}</td>
-      <td>${h.game}${_gameTag(h.game)}</td>
-      <td>${h.cross}${_crossTag(h.cross)}</td>
+      <td style="white-space:nowrap;font-size:12px;color:var(--text-muted);">${_esc(h.date)}</td>
+      <td>${_esc(h.game)}${_gameTag(h.game)}</td>
+      <td>${_esc(h.cross)}${_crossTag(h.cross)}</td>
       <td>${h.isCrisis?'<span class="badge-crisis">Crisis</span>':h.isRivals?'<span class="badge-rivals">Rivals</span>':'<span class="badge-normal">Normal</span>'}</td>
       <td class="history-player-matrix-cell" colspan="4"><div class="history-player-matrix">${playerRows}</div>${commentHtml}</td>
       <td style="font-size:12px;">${additionalStr}</td>

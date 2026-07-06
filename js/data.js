@@ -5,6 +5,7 @@
 const STORAGE_KEY = "dcData";
 const DATA_FILE   = "dc_tracker_data.json";
 const EXPORT_VERSION = 2;
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 const PREF_KEYS = ["dcTheme", "dcAdminCardFilter", "dcAdminOversizedFilter"];
 const DEFAULT_CARD_TYPES = [
   "Equipment",
@@ -355,7 +356,8 @@ function exportData() {
 function doImport() {
   const file = document.getElementById("importFile").files[0];
   if (!file) { showToast("Please select a file.", "error"); return; }
-  if (!confirm("This will overwrite all current data. Continue?")) return;
+  if (file.size > MAX_IMPORT_BYTES) { showToast("Import file is too large.", "error"); return; }
+  if (!confirm("Only import JSON files you trust. This will overwrite all current local data. Continue?")) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
@@ -368,6 +370,9 @@ function doImport() {
 }
 
 function _applyImportedData(imported) {
+  if (!imported || typeof imported !== "object" || Array.isArray(imported)) {
+    throw new Error("Invalid import data");
+  }
   const hasEnvelope = imported && imported.data && imported.app === "dc-deck-building-tracker";
   App.data = _normalise(hasEnvelope ? imported.data : imported);
   if (hasEnvelope && imported.preferences) {

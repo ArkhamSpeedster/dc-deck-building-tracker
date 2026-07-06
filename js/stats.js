@@ -150,7 +150,7 @@ function buildPlayerSummaryHTML(stats) {
     ${topCards.length ? `
     <div style="margin-top:14px;">
       <strong style="font-size:13px;">Most Used Oversized Cards:</strong><br>
-      <div style="margin-top:6px;">${topCards.map(([c,n])=>`<span class="hero-tag">${c} <span style="opacity:.6;">(${n})</span></span>`).join(" ")}</div>
+      <div style="margin-top:6px;">${topCards.map(([c,n])=>`<span class="hero-tag">${_esc(c)} <span style="opacity:.6;">(${_esc(n)})</span></span>`).join(" ")}</div>
     </div>` : ""}
   `;
 }
@@ -193,7 +193,7 @@ function renderPlayerStats() {
   const isCompare = compareChk && compareChk.checked;
   const compareBox = document.getElementById("statsComparePlayers");
 
-  const opts = data.players.map(p=>`<option value="${p}">${p}</option>`).join("");
+  const opts = data.players.map(p=>`<option value="${_esc(p)}">${_esc(p)}</option>`).join("");
   const cur  = sel.value;
   sel.innerHTML  = opts;
   if (cur && data.players.includes(cur)) sel.value = cur;
@@ -218,7 +218,7 @@ function renderPlayerStats() {
     compareBox.innerHTML = data.players
       .filter(p => p !== player)
       .map(p => `<label class="compare-player-option">
-        <input type="checkbox" value="${p}" ${checkedSet.has(p) ? "checked" : ""} onchange="handleComparePlayerChange(this)"> ${p}
+        <input type="checkbox" value="${_esc(p)}" ${checkedSet.has(p) ? "checked" : ""} onchange="handleComparePlayerChange(this)"> ${_esc(p)}
       </label>`)
       .join("");
   }
@@ -321,7 +321,7 @@ function _buildCompareTable(entries, colors) {
             ${entries.map((entry, i) => `
               <th>
                 <span class="compare-name-dot" style="background:${colors[i % colors.length]};"></span>
-                ${_ae(entry.name)}
+                ${_esc(entry.name)}
               </th>
             `).join("")}
           </tr>
@@ -330,7 +330,7 @@ function _buildCompareTable(entries, colors) {
           ${rows.map(([label, getter]) => `
             <tr>
               <td>${label}</td>
-              ${entries.map(entry => `<td>${_ae(String(getter(entry.stats)))}</td>`).join("")}
+              ${entries.map(entry => `<td>${_esc(String(getter(entry.stats)))}</td>`).join("")}
             </tr>
           `).join("")}
         </tbody>
@@ -460,7 +460,7 @@ function renderGameStats() {
         <th class="sortable" onclick="sortGameBy('name')">Game ${_sortInd(_sortGame,'name')}</th>
         <th class="sortable" onclick="sortGameBy('count')">Normal Games ${_sortInd(_sortGame,'count')}</th>
       </tr></thead>
-      <tbody>${sortedGE.map(([n,s])=>`<tr><td>${n}${_sGameTag(n)}</td><td>${s.normal}</td></tr>`).join("")}</tbody>
+      <tbody>${sortedGE.map(([n,s])=>`<tr><td>${_esc(n)}${_sGameTag(n)}</td><td>${_esc(s.normal)}</td></tr>`).join("")}</tbody>
     </table>` : ""}
 
     ${rE.length ? `
@@ -470,7 +470,7 @@ function renderGameStats() {
         <th>Game</th>
         <th>Rivals Games</th>
       </tr></thead>
-      <tbody>${rE.sort((a,b)=>b[1].played-a[1].played).map(([n,s])=>`<tr><td>${n}${_sGameTag(n)}</td><td>${s.played}</td></tr>`).join("")}</tbody>
+      <tbody>${rE.sort((a,b)=>b[1].played-a[1].played).map(([n,s])=>`<tr><td>${_esc(n)}${_sGameTag(n)}</td><td>${_esc(s.played)}</td></tr>`).join("")}</tbody>
     </table>` : ""}
 
     ${cE.length ? `
@@ -482,9 +482,9 @@ function renderGameStats() {
         <th class="sortable" onclick="sortCrossBy('count')">Normal Games ${_sortInd(_sortCross,'count')}</th>
       </tr></thead>
       <tbody>${sortedCE.map(([n,s])=>`<tr>
-        <td>${n}${_sCrossTag(n)}</td>
-        <td style="color:var(--text-dim);font-size:12px;">${[...s.basesUsed].map(b => b + _sGameTag(b)).join(", ")}</td>
-        <td>${s.games}</td>
+        <td>${_esc(n)}${_sCrossTag(n)}</td>
+        <td style="color:var(--text-dim);font-size:12px;">${[...s.basesUsed].map(b => _esc(b) + _sGameTag(b)).join(", ")}</td>
+        <td>${_esc(s.games)}</td>
       </tr>`).join("")}</tbody>
     </table>` : ""}
 
@@ -505,12 +505,12 @@ function renderGameStats() {
         const rateColor = rate <= 25 ? "#ef4444" : rate >= 75 ? "#22c55e" : "#facc15";
         return `<tr>
           <td style="color:var(--text-dim);font-size:11px;">${idx+1}</td>
-          <td>${n}${_sCrossTag(n)}</td>
-          <td style="color:var(--text-dim);font-size:12px;">${[...s.basesUsed].map(b => b + _sGameTag(b)).join(", ")}</td>
-          <td>${s.crisis}</td>
-          <td style="color:#22c55e;">${s.crisisWins}</td>
-          <td style="color:#ef4444;">${s.crisisLosses}</td>
-          <td style="color:${rateColor};font-weight:600;">${rate}%</td>
+          <td>${_esc(n)}${_sCrossTag(n)}</td>
+          <td style="color:var(--text-dim);font-size:12px;">${[...s.basesUsed].map(b => _esc(b) + _sGameTag(b)).join(", ")}</td>
+          <td>${_esc(s.crisis)}</td>
+          <td style="color:#22c55e;">${_esc(s.crisisWins)}</td>
+          <td style="color:#ef4444;">${_esc(s.crisisLosses)}</td>
+          <td style="color:${rateColor};font-weight:600;">${_esc(rate)}%</td>
         </tr>`;
       }).join("")}</tbody>
     </table>` : ""}
@@ -526,9 +526,9 @@ function renderGameStats() {
       </tr></thead>
       <tbody>${sortedOv.map((o, idx)=>`<tr>
         <td style="color:var(--text-dim);font-size:11px;">${idx+1}</td>
-        <td>${o.name}${_sOversizedTag(o.name, o.fromSet)}</td>
-        <td style="color:var(--text-dim);font-size:12px;">${o.fromSet||"—"}</td>
-        <td style="font-weight:600;">${o.count}</td>
+        <td>${_esc(o.name)}${_sOversizedTag(o.name, o.fromSet)}</td>
+        <td style="color:var(--text-dim);font-size:12px;">${_esc(o.fromSet||"—")}</td>
+        <td style="font-weight:600;">${_esc(o.count)}</td>
       </tr>`).join("")}</tbody>
     </table>` : ""}
 
@@ -544,10 +544,10 @@ function renderGameStats() {
       </tr></thead>
       <tbody>${sortedAdd.map((c, idx)=>`<tr>
         <td style="color:var(--text-dim);font-size:11px;">${idx+1}</td>
-        <td>${c.name}${_sCardTag(c.name, c.set)}</td>
-        <td style="color:var(--text-dim);font-size:12px;">${c.set||"Other"}</td>
-        <td style="color:var(--text-dim);font-size:12px;">${c.cardType||"Hero"}</td>
-        <td style="font-weight:600;">${c.count}</td>
+        <td>${_esc(c.name)}${_sCardTag(c.name, c.set)}</td>
+        <td style="color:var(--text-dim);font-size:12px;">${_esc(c.set||"Other")}</td>
+        <td style="color:var(--text-dim);font-size:12px;">${_esc(c.cardType||"Hero")}</td>
+        <td style="font-weight:600;">${_esc(c.count)}</td>
       </tr>`).join("")}</tbody>
     </table>` : ""}
   `;
@@ -576,9 +576,9 @@ function renderArchivedStats() {
     const name = typeof entry==="string"?entry:entry.name;
     const s = calcPlayerStats(name);
     const total = s.normalGames+s.crisisPlayed;
-    if (!total) return `<div class="card" style="margin:8px 0;"><strong>${name}</strong> <span style="color:var(--text-dim);font-size:13px;">(no recorded games)</span></div>`;
+    if (!total) return `<div class="card" style="margin:8px 0;"><strong>${_esc(name)}</strong> <span style="color:var(--text-dim);font-size:13px;">(no recorded games)</span></div>`;
     return `<details class="archived-player-details">
-      <summary><strong>${name}</strong> <span class="archived-badge">archived</span> — ${total} game${total!==1?"s":""}</summary>
+      <summary><strong>${_esc(name)}</strong> <span class="archived-badge">archived</span> — ${_esc(total)} game${total!==1?"s":""}</summary>
       <div style="margin-top:10px;">${buildPlayerSummaryHTML(s)}</div>
     </details>`;
   }).join("");

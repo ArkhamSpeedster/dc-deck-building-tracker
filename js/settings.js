@@ -1371,5 +1371,5 @@ function unarchiveOversized(i) {
 
 /* ===== Utility ===== */
 function _ae(s) {
-  return (s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }

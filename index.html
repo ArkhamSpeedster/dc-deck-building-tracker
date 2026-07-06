@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
   <title>DeckLedger</title>
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -76,7 +77,7 @@
     </section>
     <section>
       <h3>Keep backups</h3>
-      <p>DeckLedger uses browser localStorage only. Export JSON regularly from Settings > Data; browser cleanup, private windows, device changes, or version changes may affect saved data.</p>
+      <p>DeckLedger uses browser localStorage only. Browser cleanup, private mode, different devices, or clearing site data can erase saves, so export JSON backups regularly.</p>
     </section>
     <section>
       <h3>Fan-made</h3>
@@ -92,7 +93,7 @@
       <li>Head to <strong>Log Game</strong> and record your first session — pick a base game, crossover, date, players, and oversized cards.</li>
       <li>Check <strong>Game Stats</strong> and <strong>Game History</strong> to track performance over time.</li>
     </ol>
-    <p style="margin-top:12px;font-size:13px;color:var(--text-dim);">All data is stored in your browser's <code>localStorage</code>. Use <strong>Settings &rsaquo; Data</strong> to export backups, import JSON, or load the included sample data.</p>
+    <p style="margin-top:12px;font-size:13px;color:var(--text-dim);">All data is stored in your browser's <code>localStorage</code>. Use <strong>Settings &rsaquo; Data</strong> to export backups, import JSON, or load sample data. Only import JSON files you trust.</p>
   </div>
 
 </main>

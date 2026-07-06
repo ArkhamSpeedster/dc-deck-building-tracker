@@ -4,7 +4,7 @@ An unofficial companion and statistics tracker for the **DC Deck-Building Game**
 
 DeckLedger helps you log game nights, track player stats, compare performance, and remember which oversized and additional cards saw play. It is built as a simple responsive browser app with no account, no server, and no build step.
 
-> **Important data note:** DeckLedger stores your data in your browser's `localStorage`. Export a JSON backup regularly, especially before clearing browser data, changing devices, using private browsing, or updating versions. Exported/imported JSON compatibility is not guaranteed across all future versions, and this fan-made tool may contain bugs.
+> **Important data note:** DeckLedger stores your data only in your browser's `localStorage`. Browser cleanup, private/incognito mode, clearing site data, switching browsers, using a different device, or future version changes can erase or affect saves. Export JSON backups regularly. Only import JSON files you trust; imported files overwrite local data and may contain unwanted or misleading data.
 
 > **Disclaimer:** DeckLedger is an unofficial fan project with no affiliation to, endorsement by, or association with Cryptozoic Entertainment, DC Comics, or Warner Bros. Discovery. The *DC Deck-Building Game* is a product of Cryptozoic Entertainment; DC and all related characters, names, and elements are trademarks of and © DC Comics / Warner Bros. Discovery. All trademarks are referenced for identification purposes only. This tool is free, non-commercial, and reproduces no official artwork, cards, or rules content.
 
@@ -44,9 +44,11 @@ If your browser blocks loading the sample directly from a local file, use `Impor
 
 DeckLedger does not send your data anywhere. Everything is saved in your browser under `localStorage`.
 
-That also means your data can be lost if the browser clears site data, if you use a private/incognito window, if you switch browsers, or if future app changes alter the data format. Use `Settings > Data > Export JSON` to keep backups.
+That also means your data can be lost if the browser clears site data, if you use a private/incognito window, if you switch browsers, if you move to another device, or if future app changes alter the data format. Use `Settings > Data > Export JSON` to keep backups.
 
 Exports include the app data, preferences, and a stats snapshot for readability. History is still the source of truth, and stats are recalculated when the app runs.
+
+Treat exported JSON like personal app data. Do not import JSON files from people or places you do not trust.
 
 ## Default Cards
 
