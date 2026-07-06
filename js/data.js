@@ -360,18 +360,35 @@ function doImport() {
   reader.onload = (e) => {
     try {
       const imported = JSON.parse(e.target.result);
-      const hasEnvelope = imported && imported.data && imported.app === "dc-deck-building-tracker";
-      App.data = _normalise(hasEnvelope ? imported.data : imported);
-      if (hasEnvelope && imported.preferences) {
-        PREF_KEYS.forEach(key => {
-          if (imported.preferences[key] != null) localStorage.setItem(key, imported.preferences[key]);
-        });
-      }
-      saveData(); renderAll();
+      _applyImportedData(imported);
       showToast("Import complete.", "success", 3000);
     } catch { showToast("Invalid JSON file.", "error"); }
   };
   reader.readAsText(file);
+}
+
+function _applyImportedData(imported) {
+  const hasEnvelope = imported && imported.data && imported.app === "dc-deck-building-tracker";
+  App.data = _normalise(hasEnvelope ? imported.data : imported);
+  if (hasEnvelope && imported.preferences) {
+    PREF_KEYS.forEach(key => {
+      if (imported.preferences[key] != null) localStorage.setItem(key, imported.preferences[key]);
+    });
+  }
+  saveData();
+  renderAll();
+}
+
+async function loadSampleData() {
+  if (!confirm("This will overwrite all current data with the included sample data. Continue?")) return;
+  try {
+    const res = await fetch("sample-data/deckledger_demo_data.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("Sample data not found");
+    _applyImportedData(await res.json());
+    showToast("Sample data loaded.", "success", 3000);
+  } catch {
+    showToast("Sample data could not be loaded. Use Import JSON and choose sample-data/deckledger_demo_data.json.", "error", 5000);
+  }
 }
 
 /* ===== Theme persistence ===== */

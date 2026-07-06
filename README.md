@@ -2,7 +2,7 @@
 
 An unofficial companion and statistics tracker for the **DC Deck-Building Game**.
 
-DeckLedger helps you log game nights, track player stats, compare performance, and remember which oversized and additional cards saw play. It is built as a simple browser app with no account, no server, and no build step.
+DeckLedger helps you log game nights, track player stats, compare performance, and remember which oversized and additional cards saw play. It is built as a simple responsive browser app with no account, no server, and no build step.
 
 > **Important data note:** DeckLedger stores your data in your browser's `localStorage`. Export a JSON backup regularly, especially before clearing browser data, changing devices, using private browsing, or updating versions. Exported/imported JSON compatibility is not guaranteed across all future versions, and this fan-made tool may contain bugs.
 
@@ -10,7 +10,7 @@ DeckLedger helps you log game nights, track player stats, compare performance, a
 
 ## Try The Demo Data
 
-A sample import file is included at:
+A demo dataset is included so you can quickly see History and Stats populated.
 
 `sample-data/deckledger_demo_data.json`
 
@@ -21,8 +21,10 @@ To try it:
 1. Open `index.html` in a modern browser.
 2. Go to `Settings`.
 3. Open `Data`.
-4. Import `sample-data/deckledger_demo_data.json`.
+4. Click `Load Sample Data`.
 5. Review `Game History` and `Game Stats`.
+
+If your browser blocks loading the sample directly from a local file, use `Import JSON` and choose `sample-data/deckledger_demo_data.json`.
 
 ## What It Tracks
 
@@ -34,7 +36,9 @@ To try it:
 - Saved oversized cards by source set.
 - Archived, banned, and removed labels in history and stats so old entries still make sense.
 - JSON export/import for backups and device transfer.
+- Built-in sample data loader for quick demos.
 - Light/dark theme, defaulting to light mode.
+- Responsive layouts for desktop, tablets, and small phone screens.
 
 ## Local Data And Backups
 
@@ -83,12 +87,14 @@ Crossovers and Crisis expansions are also pre-loaded, including Crossover Packs,
 
 ## Settings Overview
 
+- Settings sections start collapsed to keep the page compact. Open only the section you want to edit.
 - `Archive` hides an item from new games while keeping it restorable and labelled in history/stats.
 - `Ban` blocks additional or oversized cards from new games while keeping them labelled in history/stats.
 - `Remove` deletes an item from Settings after confirmation. Existing history stays unchanged and can show a removed label.
 - Settings can store up to 25 active players.
 - Logged games still use 2 to 5 players, with Rivals limited to exactly 2.
 - Player comparison in Stats supports up to 5 players at a time for readability.
+- Settings include compact controls for exporting/importing JSON, loading demo data, and resetting local data.
 
 ## Compatibility
 

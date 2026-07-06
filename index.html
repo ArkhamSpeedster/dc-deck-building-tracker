@@ -72,11 +72,11 @@
   <div class="home-about home-compact-grid">
     <section>
       <h3>Track the table</h3>
-      <p>Log sessions, scores, oversized cards, nemesis defeats, Crisis outcomes, Rivals games, and extra cards in a clean local tracker.</p>
+      <p>Log sessions, scores, oversized cards, nemesis defeats, Crisis outcomes, Rivals games, and extra cards in a clean responsive tracker.</p>
     </section>
     <section>
       <h3>Keep backups</h3>
-      <p>DeckLedger uses browser localStorage only. Export JSON regularly; browser cleanup, private windows, device changes, or future version changes may affect saved data.</p>
+      <p>DeckLedger uses browser localStorage only. Export JSON regularly from Settings > Data; browser cleanup, private windows, device changes, or version changes may affect saved data.</p>
     </section>
     <section>
       <h3>Fan-made</h3>
@@ -87,12 +87,12 @@
   <div class="home-about card">
     <h3>Getting started</h3>
     <ol style="padding-left:18px;margin-top:8px;display:flex;flex-direction:column;gap:6px;">
-      <li>Go to <strong>Settings</strong> and add your player names.</li>
-      <li>Add any base games, crossovers, and oversized cards you own. Batman and Superman are included by default.</li>
+      <li>Go to <strong>Settings</strong>, open the collapsed sections you need, and add your player names.</li>
+      <li>Add any base games, crossovers, and oversized cards you own. Batman and Superman are included as locked defaults.</li>
       <li>Head to <strong>Log Game</strong> and record your first session — pick a base game, crossover, date, players, and oversized cards.</li>
       <li>Check <strong>Game Stats</strong> and <strong>Game History</strong> to track performance over time.</li>
     </ol>
-    <p style="margin-top:12px;font-size:13px;color:var(--text-dim);">All data is stored in your browser's <code>localStorage</code>. Use <strong>Settings &rsaquo; Data &rsaquo; Export JSON</strong> to back up or transfer your history.</p>
+    <p style="margin-top:12px;font-size:13px;color:var(--text-dim);">All data is stored in your browser's <code>localStorage</code>. Use <strong>Settings &rsaquo; Data</strong> to export backups, import JSON, or load the included sample data.</p>
   </div>
 
 </main>
@@ -271,10 +271,9 @@
 
   <div class="card collapsible-card" style="margin-top:10px;">
     <div class="collapsible-header" onclick="toggleSection('adminPlayersBody','adminPlayersChev')">
-      <h3 style="margin:0;">Active Players</h3><span id="adminPlayersChev">▼</span>
+      <div class="collapsible-title"><h3>Active Players</h3><p>Roster and default slots.</p></div><span id="adminPlayersChev">▶</span>
     </div>
-    <div class="collapsible-body" id="adminPlayersBody">
-      <p class="hint" style="margin-top:10px;">Your player roster — these names appear in the Log Game form. Settings can store up to 25 active players; each logged game still uses 2 to 5 players.</p>
+    <div class="collapsible-body collapsed" id="adminPlayersBody">
       <div id="adminPlayers" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddPlayer()">+ Add Player</button>
       <div id="adminDefaultSlots" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);"></div>
@@ -283,10 +282,9 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminGamesBody','adminGamesChev')">
-      <h3 style="margin:0;">Base Games</h3><span id="adminGamesChev">▼</span>
+      <div class="collapsible-title"><h3>Base Games</h3><p>Owned base sets and Rivals flags.</p></div><span id="adminGamesChev">▶</span>
     </div>
-    <div class="collapsible-body" id="adminGamesBody">
-      <p class="hint" style="margin-top:10px;">The DC Deck-Building Game sets you own. Each game session uses one base game. Check <strong>Rivals</strong> for sets that use the Rivals rules — Rivals sessions are limited to exactly 2 players.</p>
+    <div class="collapsible-body collapsed" id="adminGamesBody">
       <div id="adminGames" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddBaseGame()">+ Add Base Game</button>
     </div>
@@ -294,10 +292,9 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminCrossBody','adminCrossChev')">
-      <h3 style="margin:0;">Crossovers / Expansions</h3><span id="adminCrossChev">▼</span>
+      <div class="collapsible-title"><h3>Crossovers / Expansions</h3><p>Expansion sets and Crisis flags.</p></div><span id="adminCrossChev">▶</span>
     </div>
-    <div class="collapsible-body" id="adminCrossBody">
-      <p class="hint" style="margin-top:10px;">Expansion packs that can be paired with a base game each session. Check <strong>Crisis</strong> for crossovers that use the cooperative Crisis rules — Crisis sessions replace individual scores with a shared team win/loss result.</p>
+    <div class="collapsible-body collapsed" id="adminCrossBody">
       <div id="adminCrossovers" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddCrossover()">+ Add Crossover</button>
     </div>
@@ -305,10 +302,9 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminCardsBody','adminCardsChev')">
-      <h3 style="margin:0;">Saved Additional Cards</h3><span id="adminCardsChev">▼</span>
+      <div class="collapsible-title"><h3>Saved Additional Cards</h3><p>Promos and extras by set/type.</p></div><span id="adminCardsChev">▶</span>
     </div>
-    <div class="collapsible-body" id="adminCardsBody">
-      <p class="hint" style="margin-top:10px;">Promo cards and other extras that can be added to a game session via the Log Game screen. <strong>Set</strong> identifies where the card came from; <strong>Card Type</strong> tracks whether it is a Hero, Location, Equipment, and so on. Archive hides a card while preserving it for restore; Remove deletes it from Settings but leaves history unchanged.</p>
+    <div class="collapsible-body collapsed" id="adminCardsBody">
       <div id="adminCardTypes" style="margin-top:8px;"></div>
       <div id="adminKnownCards" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddKnownCard()">+ Add Card</button>
@@ -317,10 +313,9 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminOversizedBody','adminOversizedChev')">
-      <h3 style="margin:0;">Saved Oversized Cards</h3><span id="adminOversizedChev">▼</span>
+      <div class="collapsible-title"><h3>Saved Oversized Cards</h3><p>Player character cards by set.</p></div><span id="adminOversizedChev">▶</span>
     </div>
-    <div class="collapsible-body" id="adminOversizedBody">
-      <p class="hint" style="margin-top:10px;">The large hero or villain cards each player selects at the start of a game. Each card must be assigned to the set it came from so it can be filtered in the Log Game screen. Archive hides a card while preserving it for restore; Remove deletes it from Settings but leaves history unchanged.</p>
+    <div class="collapsible-body collapsed" id="adminOversizedBody">
       <div id="adminKnownOversized" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddOversized()">+ Add Oversized Card</button>
     </div>
@@ -328,36 +323,33 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminArchivedBody','adminArchivedChev')">
-      <h3 style="margin:0;">Archived</h3><span id="adminArchivedChev">▶</span>
+      <div class="collapsible-title"><h3>Archived</h3><p>Restore hidden items.</p></div><span id="adminArchivedChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminArchivedBody">
-      <p class="hint" style="margin-top:10px;">Items archived from active lists because they are no longer used. Archived items cannot be selected in new games and are labelled in history and stats. Unarchive to return them to the active list without affecting game history. If a card says "Active card has this name/set", rename the active card or use another set.</p>
       <div id="adminArchived"></div>
     </div>
   </div>
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminBannedCardsBody','adminBannedCardsChev')">
-      <h3 style="margin:0;">Banned Cards</h3><span id="adminBannedCardsChev">▶</span>
+      <div class="collapsible-title"><h3>Banned Cards</h3><p>Unban restricted cards.</p></div><span id="adminBannedCardsChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminBannedCardsBody">
-      <p class="hint" style="margin-top:10px;">Cards banned from play because they may be game-breaking. Banned cards cannot be selected in new games and are labelled in history and stats. Unban to restore them to the active list. If a card says "Active card has this name/set", rename the active card or use another set.</p>
       <div id="adminBannedCards"></div>
     </div>
   </div>
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminImportBody','adminImportChev')">
-      <h3 style="margin:0;">Data</h3><span id="adminImportChev">▼</span>
+      <div class="collapsible-title"><h3>Data</h3><p>Import, export, and reset.</p></div><span id="adminImportChev">▶</span>
     </div>
-    <div class="collapsible-body" id="adminImportBody">
+    <div class="collapsible-body collapsed" id="adminImportBody">
       <div style="margin-top:10px;">
-        <p class="hint">All data is stored locally in your browser. Use Export to back up your data or transfer it to another device.</p>
-
         <!-- Import / Export -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button class="primary" onclick="exportData()">⬇ Export JSON</button>
           <button class="primary" id="showImportBtn">⬆ Import JSON</button>
+          <button class="secondary" onclick="loadSampleData()">Load Sample Data</button>
         </div>
         <div id="importSection" style="display:none;margin-top:10px;">
           <input type="file" id="importFile" accept=".json" style="color:var(--text-muted);margin-bottom:6px;">

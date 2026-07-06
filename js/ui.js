@@ -35,6 +35,7 @@ function _doShowPage(pageId) {
   if (gsb) gsb.style.display = "none";
   if (window._gameSavedBannerTimer) { clearTimeout(window._gameSavedBannerTimer); window._gameSavedBannerTimer = null; }
   renderAll();
+  if (pageId === "adminPage") applyDefaultAdminCollapse();
 }
 
 function _showAdminLeaveConfirm(pageId) {
@@ -144,4 +145,25 @@ function toggleSection(bodyId, chevId) {
   const closing = !body.classList.contains("collapsed");
   body.classList.toggle("collapsed", closing);
   if (chev) chev.textContent = closing ? "▶" : "▼";
+}
+
+let _adminDefaultCollapseApplied = false;
+function applyDefaultAdminCollapse() {
+  if (_adminDefaultCollapseApplied) return;
+  [
+    ["adminPlayersBody", "adminPlayersChev"],
+    ["adminGamesBody", "adminGamesChev"],
+    ["adminCrossBody", "adminCrossChev"],
+    ["adminCardsBody", "adminCardsChev"],
+    ["adminOversizedBody", "adminOversizedChev"],
+    ["adminArchivedBody", "adminArchivedChev"],
+    ["adminBannedCardsBody", "adminBannedCardsChev"],
+    ["adminImportBody", "adminImportChev"],
+  ].forEach(([bodyId, chevId]) => {
+    const body = document.getElementById(bodyId);
+    const chev = document.getElementById(chevId);
+    if (body) body.classList.add("collapsed");
+    if (chev) chev.textContent = "▶";
+  });
+  _adminDefaultCollapseApplied = true;
 }

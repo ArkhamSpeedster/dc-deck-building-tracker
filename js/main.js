@@ -22,9 +22,16 @@ window.addEventListener("DOMContentLoaded", () => {
   initAdminDraft();
   initGamePage();
   renderAll();
+  applyDefaultAdminCollapse();
 
   // Wire import button
   document.getElementById("showImportBtn").addEventListener("click", () => {
     document.getElementById("importSection").style.display = "block";
+  });
+
+  window.addEventListener("resize", () => {
+    if (document.getElementById("adminPage").classList.contains("active")) {
+      applyDefaultAdminCollapse();
+    }
   });
 });
