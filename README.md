@@ -1,6 +1,6 @@
 # DeckLedger
 
-An unofficial companion and statistics tracker for the **DC Deck-Building Game**.
+An unofficial companion and statistics tracker for the **DC Deck-Building Game** created by Cryptozoic Entertainment.
 
 DeckLedger helps you log game nights, track player stats, compare performance, and remember which oversized and additional cards saw play. It is built as a simple responsive browser app with no account, no server, and no build step.
 
@@ -37,8 +37,13 @@ If your browser blocks loading the sample directly from a local file, use `Impor
 - Archived, banned, and removed labels in history and stats so old entries still make sense.
 - JSON export/import for backups and device transfer.
 - Built-in sample data loader for quick demos.
+- No external app dependencies at runtime; Chart.js is bundled locally.
 - Light/dark theme, defaulting to light mode.
 - Responsive layouts for desktop, tablets, and small phone screens.
+
+## Third-Party Library
+
+DeckLedger bundles Chart.js locally for charts. Chart.js is released under the MIT License; its notice is included in `vendor/chartjs.LICENSE.txt`.
 
 ## Local Data And Backups
 
@@ -117,6 +122,9 @@ dc-deck-building-tracker/
 │   ├── settings.js
 │   ├── stats.js
 │   └── ui.js
+├── vendor/
+│   ├── chart.umd.min.js
+│   └── chartjs.LICENSE.txt
 └── sample-data/
     └── deckledger_demo_data.json
 ```

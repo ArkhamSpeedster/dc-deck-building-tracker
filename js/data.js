@@ -6,6 +6,20 @@ const STORAGE_KEY = "dcData";
 const DATA_FILE   = "dc_tracker_data.json";
 const EXPORT_VERSION = 2;
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+const IMPORT_LIMITS = {
+  players: 25,
+  sets: 250,
+  cards: 1000,
+  cardTypes: 100,
+  history: 2000,
+  playersPerGame: 5,
+  additionalPerGame: 50,
+  renames: 1000,
+  name: 30,
+  playerName: 20,
+  setName: 120,
+  comment: 1000,
+};
 const PREF_KEYS = ["dcTheme", "dcAdminCardFilter", "dcAdminOversizedFilter"];
 const DEFAULT_CARD_TYPES = [
   "Equipment",
@@ -357,7 +371,7 @@ function doImport() {
   const file = document.getElementById("importFile").files[0];
   if (!file) { showToast("Please select a file.", "error"); return; }
   if (file.size > MAX_IMPORT_BYTES) { showToast("Import file is too large.", "error"); return; }
-  if (!confirm("Only import JSON files you trust. This will overwrite all current local data. Continue?")) return;
+  if (!confirm("Only import JSON files you trust.\n\nThis will overwrite all current local data. Continue?")) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
@@ -374,14 +388,194 @@ function _applyImportedData(imported) {
     throw new Error("Invalid import data");
   }
   const hasEnvelope = imported && imported.data && imported.app === "dc-deck-building-tracker";
-  App.data = _normalise(hasEnvelope ? imported.data : imported);
+  App.data = _normalise(_sanitizeImportedData(hasEnvelope ? imported.data : imported));
   if (hasEnvelope && imported.preferences) {
     PREF_KEYS.forEach(key => {
-      if (imported.preferences[key] != null) localStorage.setItem(key, imported.preferences[key]);
+      if (typeof imported.preferences[key] === "string" && imported.preferences[key].length <= 120) {
+        localStorage.setItem(key, imported.preferences[key]);
+      }
     });
   }
   saveData();
   renderAll();
+}
+
+function _importFail(message) {
+  throw new Error(message || "Invalid import data");
+}
+
+function _importArray(obj, key, max) {
+  const value = obj[key];
+  if (value == null) return [];
+  if (!Array.isArray(value)) _importFail(`Invalid ${key}`);
+  if (value.length > max) _importFail(`${key} has too many entries`);
+  return value;
+}
+
+function _importObject(value, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) _importFail(`Invalid ${label}`);
+  return value;
+}
+
+function _importString(value, label, max, fallback = "") {
+  if (value == null) return fallback;
+  if (typeof value !== "string") _importFail(`Invalid ${label}`);
+  const trimmed = value.trim();
+  if (trimmed.length > max) _importFail(`${label} is too long`);
+  return trimmed;
+}
+
+function _importBool(value, label, fallback = false) {
+  if (value == null) return fallback;
+  if (typeof value !== "boolean") _importFail(`Invalid ${label}`);
+  return value;
+}
+
+function _importInt(value, label, fallback = 0, min = 0, max = 999999) {
+  if (value == null || value === "") return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < min || n > max) _importFail(`Invalid ${label}`);
+  return n;
+}
+
+function _cleanStringArray(obj, key, maxEntries, maxLen) {
+  return _importArray(obj, key, maxEntries).map((item, idx) =>
+    _importString(item, `${key}[${idx}]`, maxLen)
+  );
+}
+
+function _cleanGame(item, idx) {
+  const obj = _importObject(item, `games[${idx}]`);
+  return {
+    name: _importString(obj.name, `games[${idx}].name`, IMPORT_LIMITS.setName),
+    isRivals: _importBool(obj.isRivals, `games[${idx}].isRivals`, false),
+  };
+}
+
+function _cleanCrossover(item, idx) {
+  const obj = _importObject(item, `crossovers[${idx}]`);
+  return {
+    name: _importString(obj.name, `crossovers[${idx}].name`, IMPORT_LIMITS.setName),
+    isCrisis: _importBool(obj.isCrisis, `crossovers[${idx}].isCrisis`, false),
+  };
+}
+
+function _cleanCard(item, idx, listName) {
+  const obj = typeof item === "string" ? { name: item, set: "Other", cardType: "Hero" } : _importObject(item, `${listName}[${idx}]`);
+  return {
+    name: _importString(obj.name, `${listName}[${idx}].name`, IMPORT_LIMITS.name),
+    set: _importString(obj.set || obj.type, `${listName}[${idx}].set`, IMPORT_LIMITS.setName, "Other"),
+    cardType: _importString(obj.cardType, `${listName}[${idx}].cardType`, IMPORT_LIMITS.name, "Hero"),
+  };
+}
+
+function _cleanOversized(item, idx, listName) {
+  const obj = typeof item === "string" ? { name: item, fromSet: "" } : _importObject(item, `${listName}[${idx}]`);
+  return {
+    name: _importString(obj.name, `${listName}[${idx}].name`, IMPORT_LIMITS.name),
+    fromSet: _importString(obj.fromSet, `${listName}[${idx}].fromSet`, IMPORT_LIMITS.setName),
+  };
+}
+
+function _cleanArchivedPlayer(item, idx) {
+  if (typeof item === "string") return { name: _importString(item, `archivedPlayers[${idx}]`, IMPORT_LIMITS.playerName) };
+  const obj = _importObject(item, `archivedPlayers[${idx}]`);
+  return { name: _importString(obj.name, `archivedPlayers[${idx}].name`, IMPORT_LIMITS.playerName) };
+}
+
+function _cleanHistoryPlayer(item, idx, gameIdx) {
+  const obj = _importObject(item, `history[${gameIdx}].players[${idx}]`);
+  return {
+    name: _importString(obj.name, `history[${gameIdx}].players[${idx}].name`, IMPORT_LIMITS.playerName),
+    oversizedCard: _importString(obj.oversizedCard || obj.heroUsed, `history[${gameIdx}].players[${idx}].oversizedCard`, IMPORT_LIMITS.name),
+    oversizedFrom: _importString(obj.oversizedFrom || obj.heroFrom, `history[${gameIdx}].players[${idx}].oversizedFrom`, IMPORT_LIMITS.setName),
+    score: _importInt(obj.score, `history[${gameIdx}].players[${idx}].score`, 0, 0, 9999),
+    nemesis: _importInt(obj.nemesis, `history[${gameIdx}].players[${idx}].nemesis`, 0, 0, 999),
+    result: _importString(obj.result, `history[${gameIdx}].players[${idx}].result`, 10),
+    place: _importInt(obj.place, `history[${gameIdx}].players[${idx}].place`, 0, 0, 5),
+  };
+}
+
+function _cleanHistoryEntry(item, idx) {
+  const obj = _importObject(item, `history[${idx}]`);
+  const players = _importArray(obj, "players", IMPORT_LIMITS.playersPerGame)
+    .map((p, pIdx) => _cleanHistoryPlayer(p, pIdx, idx));
+  const additional = _importArray(obj, "additional", IMPORT_LIMITS.additionalPerGame)
+    .map((c, cIdx) => _cleanCard(c, cIdx, `history[${idx}].additional`));
+  return {
+    gameNum: _importInt(obj.gameNum, `history[${idx}].gameNum`, idx + 1, 1, 999999),
+    game: _importString(obj.game, `history[${idx}].game`, IMPORT_LIMITS.setName),
+    cross: _importString(obj.cross, `history[${idx}].cross`, IMPORT_LIMITS.setName),
+    isCrisis: _importBool(obj.isCrisis, `history[${idx}].isCrisis`, false),
+    isRivals: _importBool(obj.isRivals, `history[${idx}].isRivals`, false),
+    teamWon: _importBool(obj.teamWon, `history[${idx}].teamWon`, false),
+    teamNemesis: _importInt(obj.teamNemesis, `history[${idx}].teamNemesis`, 0, 0, 999),
+    players,
+    additional,
+    date: _importString(obj.date, `history[${idx}].date`, 40),
+    dateSort: _importInt(obj.dateSort, `history[${idx}].dateSort`, 0, 0, 99999999),
+    comment: _importString(obj.comment, `history[${idx}].comment`, IMPORT_LIMITS.comment),
+  };
+}
+
+function _cleanRename(item, idx) {
+  const obj = _importObject(item, `renames[${idx}]`);
+  return {
+    from: _importString(obj.from, `renames[${idx}].from`, IMPORT_LIMITS.playerName),
+    to: _importString(obj.to, `renames[${idx}].to`, IMPORT_LIMITS.playerName),
+    date: _importString(obj.date, `renames[${idx}].date`, 40),
+  };
+}
+
+function _ensureUniqueImportItems(items, label, keyFn) {
+  const seen = new Set();
+  items.forEach((item, idx) => {
+    const key = keyFn(item);
+    if (seen.has(key)) _importFail(`Duplicate ${label} at entry ${idx + 1}`);
+    seen.add(key);
+  });
+}
+
+function _sanitizeImportedData(raw) {
+  const obj = _importObject(raw, "data");
+  const cleaned = {
+    players: _cleanStringArray(obj, "players", IMPORT_LIMITS.players, IMPORT_LIMITS.playerName),
+    games: _importArray(obj, "games", IMPORT_LIMITS.sets).map(_cleanGame),
+    crossovers: _importArray(obj, "crossovers", IMPORT_LIMITS.sets).map(_cleanCrossover),
+    knownCards: _importArray(obj, "knownCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "knownCards")),
+    knownOversized: _importArray(obj, "knownOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "knownOversized")),
+    cardTypes: _cleanStringArray(obj, "cardTypes", IMPORT_LIMITS.cardTypes, IMPORT_LIMITS.name),
+    archivedPlayers: _importArray(obj, "archivedPlayers", IMPORT_LIMITS.players).map(_cleanArchivedPlayer),
+    archivedGames: _importArray(obj, "archivedGames", IMPORT_LIMITS.sets).map(_cleanGame),
+    archivedCrossovers: _importArray(obj, "archivedCrossovers", IMPORT_LIMITS.sets).map(_cleanCrossover),
+    archivedCards: _importArray(obj, "archivedCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "archivedCards")),
+    archivedOversized: _importArray(obj, "archivedOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "archivedOversized")),
+    bannedCards: _importArray(obj, "bannedCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "bannedCards")),
+    bannedOversized: _importArray(obj, "bannedOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "bannedOversized")),
+    removedCards: _importArray(obj, "removedCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "removedCards")),
+    removedOversized: _importArray(obj, "removedOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "removedOversized")),
+    removedPlayers: _importArray(obj, "removedPlayers", IMPORT_LIMITS.players).map(_cleanArchivedPlayer),
+    deletedGames: _importArray(obj, "deletedGames", IMPORT_LIMITS.sets).map((item, idx) =>
+      _importString(item, `deletedGames[${idx}]`, IMPORT_LIMITS.setName)
+    ),
+    deletedCrossovers: _importArray(obj, "deletedCrossovers", IMPORT_LIMITS.sets).map((item, idx) =>
+      _importString(item, `deletedCrossovers[${idx}]`, IMPORT_LIMITS.setName)
+    ),
+    deletedCards: _importArray(obj, "deletedCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "deletedCards")),
+    deletedOversized: _importArray(obj, "deletedOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "deletedOversized")),
+    history: _importArray(obj, "history", IMPORT_LIMITS.history).map(_cleanHistoryEntry),
+    nextGameNum: _importInt(obj.nextGameNum, "nextGameNum", 1, 1, 999999),
+    renames: _importArray(obj, "renames", IMPORT_LIMITS.renames).map(_cleanRename),
+    defaultSlot1: _importString(obj.defaultSlot1, "defaultSlot1", IMPORT_LIMITS.playerName, null),
+    defaultSlot2: _importString(obj.defaultSlot2, "defaultSlot2", IMPORT_LIMITS.playerName, null),
+  };
+  _ensureUniqueImportItems(cleaned.players, "player", p => p.toLowerCase());
+  _ensureUniqueImportItems(cleaned.games, "base game", g => g.name.toLowerCase());
+  _ensureUniqueImportItems(cleaned.crossovers, "crossover", c => c.name.toLowerCase());
+  _ensureUniqueImportItems(cleaned.cardTypes, "card type", t => t.toLowerCase());
+  _ensureUniqueImportItems(cleaned.knownCards, "additional card", c => `${c.name.toLowerCase()}|${c.set}`);
+  _ensureUniqueImportItems(cleaned.knownOversized, "oversized card", c => `${c.name.toLowerCase()}|${c.fromSet}`);
+  return cleaned;
 }
 
 async function loadSampleData() {

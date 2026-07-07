@@ -119,6 +119,12 @@ function _adminStartEdit(btn, sectionKey, idx) {
       _reRenderSection(sectionKey);
       return;
     }
+    if (sectionKey === "players" && _adminPlayerNameExists(val, idx)) {
+      input.style.outline = "2px solid #ef4444";
+      showToast(`Player "${val}" already exists. Use a unique name.`, "error");
+      input.focus();
+      return;
+    }
     // If set/type not chosen yet, keep edit mode open (don't commit on blur)
     if (_metaMissing()) return;
     committed = true;
@@ -131,6 +137,12 @@ function _adminStartEdit(btn, sectionKey, idx) {
     if (committed) return;
     if (!input.value.trim()) {
       input.style.outline = "2px solid #ef4444";
+      input.focus();
+      return;
+    }
+    if (sectionKey === "players" && _adminPlayerNameExists(input.value, idx)) {
+      input.style.outline = "2px solid #ef4444";
+      showToast(`Player "${input.value.trim()}" already exists. Use a unique name.`, "error");
       input.focus();
       return;
     }
@@ -185,6 +197,14 @@ function _autoEditLastRow(containerId) {
 /* ===== Validation ===== */
 function _adminNameKey(name) {
   return (name || "").trim().toLowerCase();
+}
+
+function _adminPlayerNameExists(name, ignoreIdx) {
+  const key = _adminNameKey(name);
+  if (!key) return false;
+  return (App.adminDraft.players || []).some((player, idx) =>
+    idx !== ignoreIdx && _adminNameKey(player) === key
+  );
 }
 
 function _adminCardIdentityMatches(card, name, set) {
@@ -909,7 +929,7 @@ function renderAdminKnownCards() {
     localStorage.setItem("dcAdminCardFilter", "");
   }
   const setOpts = [["", "All Sets"], ...allSets.map(s => [s, s])].map(([val, label]) =>
-    `<option value="${val}" ${val === _adminCardTypeFilter ? "selected" : ""}>${label}</option>`
+    `<option value="${_ae(val)}" ${val === _adminCardTypeFilter ? "selected" : ""}>${_ae(label)}</option>`
   ).join("");
   filterBar.innerHTML = `
     <span style="font-size:12px;color:var(--text-dim);">Filter by set:</span>
@@ -1159,7 +1179,7 @@ function renderAdminKnownOversized() {
     const protectedCard = _isProtectedOversized(c);
     const setOptsHtml = [
       `<option value="" disabled ${!c.fromSet ? "selected" : ""} class="placeholder-opt">— Choose Set —</option>`,
-      ...allSets.map(s => `<option value="${s}" ${s === c.fromSet ? "selected" : ""}>${s}</option>`),
+      ...allSets.map(s => `<option value="${_ae(s)}" ${s === c.fromSet ? "selected" : ""}>${_ae(s)}</option>`),
     ].join("");
     const setField = protectedCard
       ? `<span class="admin-static admin-card-set admin-default-text">${_ae(c.fromSet || "")}</span>`
