@@ -152,10 +152,10 @@ function applyDefaultAdminCollapse() {
   if (_adminDefaultCollapseApplied) return;
   [
     ["adminPlayersBody", "adminPlayersChev"],
+    ["adminOversizedBody", "adminOversizedChev"],
+    ["adminCardsBody", "adminCardsChev"],
     ["adminGamesBody", "adminGamesChev"],
     ["adminCrossBody", "adminCrossChev"],
-    ["adminCardsBody", "adminCardsChev"],
-    ["adminOversizedBody", "adminOversizedChev"],
     ["adminArchivedBody", "adminArchivedChev"],
     ["adminBannedCardsBody", "adminBannedCardsChev"],
     ["adminImportBody", "adminImportChev"],

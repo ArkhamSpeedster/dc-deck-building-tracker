@@ -43,7 +43,7 @@
 <main class="page active" id="homePage">
   <div class="home-hero card">
     <h2 class="home-title">DeckLedger</h2>
-    <p class="home-subtitle">An unofficial companion and statistics tracker for the DC Deck-Building Game created by Cryptozoic Entertainment.</p>
+    <p class="home-subtitle">An unofficial companion and statistics tracker for the DC Deck-Building Game created by <a href="https://cryptozoic.com/" target="_blank" rel="noopener noreferrer">Cryptozoic Entertainment</a>.</p>
 
     <!-- Quick nav sits right under the hero tagline -->
     <div class="home-nav-grid">
@@ -93,7 +93,7 @@
       <li>Head to <strong>Log Game</strong> and record your first session — pick a base game, crossover, date, players, and oversized cards.</li>
       <li>Check <strong>Game Stats</strong> and <strong>Game History</strong> to track performance over time.</li>
     </ol>
-    <p style="margin-top:12px;font-size:13px;color:var(--text-dim);">All data is stored in your browser's <code>localStorage</code>. Use <strong>Settings &rsaquo; Data</strong> to export backups, import JSON, or load sample data. Only import JSON files you trust.</p>
+    <p style="margin-top:12px;font-size:13px;color:var(--text-dim);">All data is stored in your browser's <code>localStorage</code>. Use <strong>Settings &rsaquo; Data Management</strong> to export backups, import JSON, or load sample data. Only import JSON files you trust.</p>
   </div>
 
 </main>
@@ -141,7 +141,7 @@
     <h4 style="margin-top:18px;">Additional Cards
       <span style="font-weight:normal;font-size:12px;color:var(--text-dim);">(promos, extras)</span>
     </h4>
-    <p class="hint">Select from your saved additional cards (manage them in Settings).</p>
+    <p class="hint">Only add promos, extras, or other user-added cards that are not already included in the selected base game or crossover/expansion.</p>
     <div id="additionalCardsContainer"></div>
     <button class="primary" onclick="addAdditionalCard()">+ Add Card</button>
   </div>
@@ -265,6 +265,7 @@
     <button class="primary" id="adminSaveBtn" onclick="saveAdminChanges()">💾 Save Changes</button>
     <button class="secondary"                 onclick="discardAdminChanges(this)">↺ Discard</button>
   </div>
+  <div id="dataLoadConfirm" class="data-load-confirm" aria-live="polite"></div>
 
   <div class="card" style="margin-top:10px;">
     <p class="hint" style="margin:0;"><strong>Archive</strong> hides an item from new games while keeping it restorable and labelled in history/stats. <strong>Ban</strong> blocks cards from new games until unbanned and labels them in history/stats. <strong>Remove</strong> deletes an item from Settings after confirmation; existing history stays unchanged.</p>
@@ -278,6 +279,27 @@
       <div id="adminPlayers" style="margin-top:8px;"></div>
       <button class="primary" onclick="draftAddPlayer()">+ Add Player</button>
       <div id="adminDefaultSlots" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);"></div>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminOversizedBody','adminOversizedChev')">
+      <div class="collapsible-title"><h3>Oversized Cards</h3><p>Player character cards by set.</p></div><span id="adminOversizedChev">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="adminOversizedBody">
+      <div id="adminKnownOversized" style="margin-top:8px;"></div>
+      <button class="primary" onclick="draftAddOversized()">+ Add Oversized Card</button>
+    </div>
+  </div>
+
+  <div class="card collapsible-card">
+    <div class="collapsible-header" onclick="toggleSection('adminCardsBody','adminCardsChev')">
+      <div class="collapsible-title"><h3>Additional Cards</h3><p>Promos and extras by set/type.</p></div><span id="adminCardsChev">▶</span>
+    </div>
+    <div class="collapsible-body collapsed" id="adminCardsBody">
+      <div id="adminKnownCards" style="margin-top:8px;"></div>
+      <button class="primary" onclick="draftAddKnownCard()">+ Add Card</button>
+      <div id="adminCardTypes" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);"></div>
     </div>
   </div>
 
@@ -302,29 +324,8 @@
   </div>
 
   <div class="card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('adminCardsBody','adminCardsChev')">
-      <div class="collapsible-title"><h3>Saved Additional Cards</h3><p>Promos and extras by set/type.</p></div><span id="adminCardsChev">▶</span>
-    </div>
-    <div class="collapsible-body collapsed" id="adminCardsBody">
-      <div id="adminCardTypes" style="margin-top:8px;"></div>
-      <div id="adminKnownCards" style="margin-top:8px;"></div>
-      <button class="primary" onclick="draftAddKnownCard()">+ Add Card</button>
-    </div>
-  </div>
-
-  <div class="card collapsible-card">
-    <div class="collapsible-header" onclick="toggleSection('adminOversizedBody','adminOversizedChev')">
-      <div class="collapsible-title"><h3>Saved Oversized Cards</h3><p>Player character cards by set.</p></div><span id="adminOversizedChev">▶</span>
-    </div>
-    <div class="collapsible-body collapsed" id="adminOversizedBody">
-      <div id="adminKnownOversized" style="margin-top:8px;"></div>
-      <button class="primary" onclick="draftAddOversized()">+ Add Oversized Card</button>
-    </div>
-  </div>
-
-  <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminArchivedBody','adminArchivedChev')">
-      <div class="collapsible-title"><h3>Archived</h3><p>Restore hidden items.</p></div><span id="adminArchivedChev">▶</span>
+      <div class="collapsible-title"><h3>Archived Content</h3><p>Restore hidden players, cards, and items.</p></div><span id="adminArchivedChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminArchivedBody">
       <div id="adminArchived"></div>
@@ -333,7 +334,7 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminBannedCardsBody','adminBannedCardsChev')">
-      <div class="collapsible-title"><h3>Banned Cards</h3><p>Unban restricted cards.</p></div><span id="adminBannedCardsChev">▶</span>
+      <div class="collapsible-title"><h3>Banned Content</h3><p>Unban restricted cards.</p></div><span id="adminBannedCardsChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminBannedCardsBody">
       <div id="adminBannedCards"></div>
@@ -342,10 +343,11 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminImportBody','adminImportChev')">
-      <div class="collapsible-title"><h3>Data</h3><p>Import, export, and reset.</p></div><span id="adminImportChev">▶</span>
+      <div class="collapsible-title"><h3>Data Management</h3><p>Import, export, and reset.</p></div><span id="adminImportChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminImportBody">
       <div style="margin-top:10px;">
+        <div id="dataVersionNotice" class="data-version-notice"></div>
         <!-- Import / Export -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button class="primary" onclick="exportData()">⬇ Export JSON</button>
@@ -370,6 +372,7 @@
   <p>This is a free, non-commercial tool for personal game tracking. No official artwork, cards, or rules content is reproduced. All data you enter stays in your own browser — nothing is collected or transmitted.</p>
 </footer>
 
+<script src="js/sample-data.js"></script>
 <script src="js/data.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/game.js"></script>

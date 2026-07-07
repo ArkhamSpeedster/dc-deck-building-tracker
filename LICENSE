@@ -1,0 +1,25 @@
+DeckLedger Personal Use License
+
+DeckLedger is a free, unofficial, non-commercial fan tool for personal game
+tracking.
+
+Permission is granted to use, copy, and share this project for personal,
+non-commercial purposes, provided that this license notice remains included.
+
+You may modify the project for your own personal use. You may not sell,
+relicense, sublicense, or commercially distribute DeckLedger or derivative
+versions without written permission from the copyright holder.
+
+This license applies to DeckLedger's original app code and documentation only.
+Third-party libraries bundled with the project remain under their own licenses.
+Chart.js is bundled separately under the MIT License; see
+vendor/chartjs.LICENSE.txt.
+
+DeckLedger is provided "as is", without warranty of any kind. The author is not
+liable for data loss, bugs, damages, or other issues arising from use of this
+tool. Users are responsible for exporting and keeping their own backups.
+
+DeckLedger is not affiliated with, endorsed by, sponsored by, or associated
+with Cryptozoic Entertainment, DC Comics, or Warner Bros. Discovery. All
+trademarks and copyrighted material belong to their respective owners and are
+referenced for identification purposes only.

@@ -484,6 +484,24 @@ canvas { background:var(--bg3); border:1px solid var(--border); border-radius:va
   border-radius:var(--radius); margin-bottom:0;
   box-shadow:var(--shadow);
 }
+.data-version-notice {
+  display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center;
+  margin-bottom:12px; padding:9px 10px;
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg3); color:var(--text-dim); font-size:12.5px;
+}
+.data-version-notice strong { color:var(--text); }
+.data-version-notice span { white-space:nowrap; }
+.data-load-confirm {
+  display:none; margin-top:10px; padding:10px 12px;
+  border:1px solid rgba(34,197,94,.35); border-radius:var(--radius-sm);
+  background:rgba(34,197,94,.12); color:var(--success-text);
+  font-size:13px; font-weight:650;
+}
+.data-load-confirm.visible { display:block; }
+.chart-unavailable {
+  margin:8px 0 0; color:var(--text-dim); font-size:12.5px; text-align:center;
+}
 .admin-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
 .admin-row > button { flex:0 0 auto; min-width:76px; padding-left:10px; padding-right:10px; }
 .admin-row > button[title="Up"],

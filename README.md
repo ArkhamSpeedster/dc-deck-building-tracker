@@ -20,11 +20,11 @@ To try it:
 
 1. Open `index.html` in a modern browser.
 2. Go to `Settings`.
-3. Open `Data`.
+3. Open `Data Management`.
 4. Click `Load Sample Data`.
 5. Review `Game History` and `Game Stats`.
 
-If your browser blocks loading the sample directly from a local file, use `Import JSON` and choose `sample-data/deckledger_demo_data.json`.
+The sample data is also bundled in the app so `Load Sample Data` works when opening `index.html` directly.
 
 ## What It Tracks
 
@@ -36,6 +36,9 @@ If your browser blocks loading the sample directly from a local file, use `Impor
 - Saved oversized cards by source set.
 - Archived, banned, and removed labels in history and stats so old entries still make sense.
 - JSON export/import for backups and device transfer.
+- Import preview before overwriting local data.
+- App/export format version details in Data Management.
+- Backup reminders after every 5 logged games.
 - Built-in sample data loader for quick demos.
 - No external app dependencies at runtime; Chart.js is bundled locally.
 - Light/dark theme, defaulting to light mode.
@@ -45,11 +48,17 @@ If your browser blocks loading the sample directly from a local file, use `Impor
 
 DeckLedger bundles Chart.js locally for charts. Chart.js is released under the MIT License; its notice is included in `vendor/chartjs.LICENSE.txt`.
 
+## License And Changelog
+
+DeckLedger's original app code is shared for free personal, non-commercial use. See `LICENSE`.
+
+See `CHANGELOG.md` for release notes.
+
 ## Local Data And Backups
 
 DeckLedger does not send your data anywhere. Everything is saved in your browser under `localStorage`.
 
-That also means your data can be lost if the browser clears site data, if you use a private/incognito window, if you switch browsers, if you move to another device, or if future app changes alter the data format. Use `Settings > Data > Export JSON` to keep backups.
+That also means your data can be lost if the browser clears site data, if you use a private/incognito window, if you switch browsers, if you move to another device, or if future app changes alter the data format. Use `Settings > Data Management > Export JSON` to keep backups.
 
 Exports include the app data, preferences, and a stats snapshot for readability. History is still the source of truth, and stats are recalculated when the app runs.
 
@@ -100,6 +109,7 @@ Crossovers and Crisis expansions are also pre-loaded, including Crossover Packs,
 - `Remove` deletes an item from Settings after confirmation. Existing history stays unchanged and can show a removed label.
 - Settings can store up to 25 active players.
 - Logged games still use 2 to 5 players, with Rivals limited to exactly 2.
+- Card lists, base games, crossovers, and logged game history do not have app-imposed count limits, though browser storage still has practical limits.
 - Player comparison in Stats supports up to 5 players at a time for readability.
 - Settings include compact controls for exporting/importing JSON, loading demo data, and resetting local data.
 
@@ -111,6 +121,8 @@ DeckLedger supports the standard competitive DC Deck-Building Game format, Rival
 
 ```text
 dc-deck-building-tracker/
+├── CHANGELOG.md
+├── LICENSE
 ├── index.html
 ├── css/
 │   └── styles.css
@@ -119,6 +131,7 @@ dc-deck-building-tracker/
 │   ├── game.js
 │   ├── history.js
 │   ├── main.js
+│   ├── sample-data.js
 │   ├── settings.js
 │   ├── stats.js
 │   └── ui.js

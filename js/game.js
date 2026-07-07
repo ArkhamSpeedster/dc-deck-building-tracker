@@ -751,6 +751,7 @@ function saveGame() {
     initGamePage();
     renderAll();
     _showGameSavedBanner();
+    _showBackupReminderIfNeeded(data.history.length);
   }
 }
 
@@ -762,6 +763,16 @@ function _showGameSavedBanner() {
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (window._gameSavedBannerTimer) clearTimeout(window._gameSavedBannerTimer);
   window._gameSavedBannerTimer = setTimeout(() => { banner.style.display = "none"; }, 6000);
+}
+
+function _showBackupReminderIfNeeded(totalGames) {
+  if (!totalGames || totalGames % 5 !== 0) return;
+  const key = "dcLastBackupReminderGameCount";
+  if (localStorage.getItem(key) === String(totalGames)) return;
+  localStorage.setItem(key, String(totalGames));
+  setTimeout(() => {
+    showToast(`You have ${totalGames} logged games. Consider exporting a JSON backup in Data Management.`, "info", 7000);
+  }, 650);
 }
 
 /* ===== Game error banner ===== */

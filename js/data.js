@@ -4,17 +4,19 @@
 
 const STORAGE_KEY = "dcData";
 const DATA_FILE   = "dc_tracker_data.json";
+const APP_VERSION = "1.0.0";
 const EXPORT_VERSION = 2;
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+const NO_IMPORT_COUNT_LIMIT = Number.MAX_SAFE_INTEGER;
 const IMPORT_LIMITS = {
   players: 25,
-  sets: 250,
-  cards: 1000,
+  sets: NO_IMPORT_COUNT_LIMIT,
+  cards: NO_IMPORT_COUNT_LIMIT,
   cardTypes: 100,
-  history: 2000,
+  history: NO_IMPORT_COUNT_LIMIT,
   playersPerGame: 5,
-  additionalPerGame: 50,
-  renames: 1000,
+  additionalPerGame: NO_IMPORT_COUNT_LIMIT,
+  renames: NO_IMPORT_COUNT_LIMIT,
   name: 30,
   playerName: 20,
   setName: 120,
@@ -220,6 +222,9 @@ function _normalise(d) {
 
 function _renumberHistoryByDate(d) {
   const history = d.history || [];
+  history.forEach(h => {
+    h.date = toDateInputValue(h.date);
+  });
   history
     .map((h, idx) => ({ h, idx, oldNum: h.gameNum || idx + 1 }))
     .sort((a, b) => {
@@ -350,6 +355,7 @@ function resetData() {
 function exportData() {
   const payload = {
     app: "dc-deck-building-tracker",
+    appVersion: APP_VERSION,
     version: EXPORT_VERSION,
     exportedAt: new Date().toISOString(),
     data: App.data,
@@ -371,12 +377,14 @@ function doImport() {
   const file = document.getElementById("importFile").files[0];
   if (!file) { showToast("Please select a file.", "error"); return; }
   if (file.size > MAX_IMPORT_BYTES) { showToast("Import file is too large.", "error"); return; }
-  if (!confirm("Only import JSON files you trust.\n\nThis will overwrite all current local data. Continue?")) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const imported = JSON.parse(e.target.result);
-      _applyImportedData(imported);
+      const prepared = _prepareImportedData(imported);
+      if (!_confirmImportPreview(prepared)) return;
+      _commitImportedData(prepared);
+      _showDataLoadConfirm(`Import complete. ${_dataLoadSummary(prepared.data)}`);
       showToast("Import complete.", "success", 3000);
     } catch { showToast("Invalid JSON file.", "error"); }
   };
@@ -384,20 +392,106 @@ function doImport() {
 }
 
 function _applyImportedData(imported) {
+  _commitImportedData(_prepareImportedData(imported));
+}
+
+function _prepareImportedData(imported) {
   if (!imported || typeof imported !== "object" || Array.isArray(imported)) {
     throw new Error("Invalid import data");
   }
   const hasEnvelope = imported && imported.data && imported.app === "dc-deck-building-tracker";
-  App.data = _normalise(_sanitizeImportedData(hasEnvelope ? imported.data : imported));
-  if (hasEnvelope && imported.preferences) {
+  return {
+    data: _normalise(_sanitizeImportedData(hasEnvelope ? imported.data : imported)),
+    preferences: hasEnvelope && imported.preferences ? imported.preferences : null,
+    appVersion: hasEnvelope ? (imported.appVersion || "unknown") : "legacy/raw",
+    exportVersion: hasEnvelope ? (imported.version || "unknown") : "legacy/raw",
+  };
+}
+
+function _commitImportedData(prepared) {
+  App.data = prepared.data;
+  App.adminDirty = false;
+  App.adminDraft = null;
+  if (prepared.preferences) {
     PREF_KEYS.forEach(key => {
-      if (typeof imported.preferences[key] === "string" && imported.preferences[key].length <= 120) {
-        localStorage.setItem(key, imported.preferences[key]);
+      if (typeof prepared.preferences[key] === "string" && prepared.preferences[key].length <= 120) {
+        localStorage.setItem(key, prepared.preferences[key]);
       }
     });
   }
   saveData();
-  renderAll();
+  const saveBtn = document.getElementById("adminSaveBtn");
+  if (saveBtn) {
+    saveBtn.classList.remove("unsaved");
+    saveBtn.textContent = "💾 Save Changes";
+  }
+  try {
+    renderAll();
+  } catch (err) {
+    console.error(err);
+    initAdminDraft();
+    renderAll();
+  }
+}
+
+function _countAllCards(data) {
+  return (data.knownCards || []).length + (data.knownOversized || []).length;
+}
+
+function _countBannedContent(data) {
+  return (data.bannedCards || []).length + (data.bannedOversized || []).length;
+}
+
+function _countArchivedContent(data) {
+  return (data.archivedPlayers || []).length +
+    (data.archivedGames || []).length +
+    (data.archivedCrossovers || []).length +
+    (data.archivedCards || []).length +
+    (data.archivedOversized || []).length;
+}
+
+function _countRemovedContent(data) {
+  return (data.removedPlayers || []).length +
+    (data.removedCards || []).length +
+    (data.removedOversized || []).length;
+}
+
+function _dataLoadSummary(data) {
+  return `${_plural((data.history || []).length, "game")} and ${_plural((data.players || []).length, "player")} loaded.`;
+}
+
+function _showDataLoadConfirm(message) {
+  const el = document.getElementById("dataLoadConfirm");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add("visible");
+}
+
+function _plural(n, one, many) {
+  return `${n} ${n === 1 ? one : (many || one + "s")}`;
+}
+
+function _confirmImportPreview(prepared) {
+  const data = prepared.data;
+  const lines = [
+    "Only import JSON files you trust.",
+    "",
+    "This import contains:",
+    `- ${_plural((data.players || []).length, "active player")}`,
+    `- ${_plural((data.history || []).length, "logged game")}`,
+    `- ${_plural((data.games || []).length, "base game")}`,
+    `- ${_plural((data.crossovers || []).length, "crossover / expansion")}`,
+    `- ${_plural(_countAllCards(data), "active card")}`,
+    `- ${_plural(_countBannedContent(data), "banned item")}`,
+    `- ${_plural(_countArchivedContent(data), "archived item")}`,
+    `- ${_plural(_countRemovedContent(data), "removed item")}`,
+    "",
+    `Export format: v${prepared.exportVersion}`,
+    `Created by app version: ${prepared.appVersion}`,
+    "",
+    "Importing will overwrite all current local data. Continue?",
+  ];
+  return confirm(lines.join("\n"));
 }
 
 function _importFail(message) {
@@ -581,13 +675,36 @@ function _sanitizeImportedData(raw) {
 async function loadSampleData() {
   if (!confirm("This will overwrite all current data with the included sample data. Continue?")) return;
   try {
-    const res = await fetch("sample-data/deckledger_demo_data.json", { cache: "no-store" });
-    if (!res.ok) throw new Error("Sample data not found");
-    _applyImportedData(await res.json());
+    const sample = await _fetchSampleData();
+    const prepared = _prepareImportedData(sample);
+    _commitImportedData(prepared);
+    _showDataLoadConfirm(`Sample data loaded. ${_dataLoadSummary(prepared.data)}`);
     showToast("Sample data loaded.", "success", 3000);
-  } catch {
+  } catch (err) {
+    console.error(err);
     showToast("Sample data could not be loaded. Use Import JSON and choose sample-data/deckledger_demo_data.json.", "error", 5000);
   }
+}
+
+async function _fetchSampleData() {
+  if (typeof DECKLEDGER_SAMPLE_DATA !== "undefined") {
+    return JSON.parse(JSON.stringify(DECKLEDGER_SAMPLE_DATA));
+  }
+  const paths = [
+    "sample-data/deckledger_demo_data.json",
+    "./sample-data/deckledger_demo_data.json",
+  ];
+  let lastError;
+  for (const path of paths) {
+    try {
+      const res = await fetch(path, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Sample data not found at ${path}`);
+      return await res.json();
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Sample data not found");
 }
 
 /* ===== Theme persistence ===== */
@@ -611,17 +728,23 @@ function resolveCurrentName(name) {
 
 /* ===== Date Helpers ===== */
 function toDateInputValue(dateStr) {
-  let d = dateStr ? new Date(dateStr) : new Date();
+  let d;
+  if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, da] = dateStr.split("-").map(Number);
+    d = new Date(y, m - 1, da);
+  } else {
+    d = dateStr ? new Date(dateStr) : new Date();
+  }
   if (isNaN(d.getTime())) d = new Date();
   const pad = n => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
 
 function fromDateInputValue(val) {
-  if (!val) return new Date().toLocaleDateString();
+  if (!val) return toDateInputValue(null);
   const [y, m, da] = val.split("-").map(Number);
   const d = new Date(y, m - 1, da);
-  return isNaN(d.getTime()) ? new Date().toLocaleDateString() : d.toLocaleDateString();
+  return isNaN(d.getTime()) ? toDateInputValue(null) : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function dateSortKey(dateStr) {

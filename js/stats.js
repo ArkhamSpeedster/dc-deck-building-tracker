@@ -185,6 +185,34 @@ function _smallChartOpts(cc, hasLegend) {
   };
 }
 
+function _chartsAvailable() {
+  return typeof Chart !== "undefined";
+}
+
+function _destroyChart(instance) {
+  if (instance && typeof instance.destroy === "function") instance.destroy();
+}
+
+function _showChartUnavailable(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  if (!wrap) return;
+  let msg = wrap.querySelector(".chart-unavailable");
+  if (!msg) {
+    msg = document.createElement("p");
+    msg.className = "chart-unavailable";
+    wrap.appendChild(msg);
+  }
+  msg.textContent = "Charts unavailable. Stats tables are still available.";
+}
+
+function _clearChartUnavailable(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  const msg = canvas?.parentElement?.querySelector(".chart-unavailable");
+  if (msg) msg.remove();
+}
+
 /* ===== Active Player Stats ===== */
 function renderPlayerStats() {
   const data = App.data;
@@ -230,7 +258,9 @@ function renderPlayerStats() {
   } else {
     const stats = calcPlayerStats(player);
     document.getElementById("statsSummary").innerHTML = buildPlayerSummaryHTML(stats);
-    if (chartPlayerInstance) { chartPlayerInstance.destroy(); chartPlayerInstance=null; }
+    _destroyChart(chartPlayerInstance); chartPlayerInstance=null;
+    if (!_chartsAvailable()) { _showChartUnavailable("statsChart"); return; }
+    _clearChartUnavailable("statsChart");
     chartPlayerInstance = new Chart(document.getElementById("statsChart"), {
       type:"bar",
       data:{ labels:["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L"],
@@ -264,7 +294,9 @@ function _renderCompare(players, cc) {
   const summaryEl = document.getElementById("statsSummary");
   summaryEl.innerHTML = _buildCompareTable(stats, colors);
 
-  if (chartPlayerInstance) { chartPlayerInstance.destroy(); chartPlayerInstance=null; }
+  _destroyChart(chartPlayerInstance); chartPlayerInstance=null;
+  if (!_chartsAvailable()) { _showChartUnavailable("statsChart"); return; }
+  _clearChartUnavailable("statsChart");
   chartPlayerInstance = new Chart(document.getElementById("statsChart"), {
     type:"bar",
     data:{ labels,
@@ -552,8 +584,10 @@ function renderGameStats() {
     </table>` : ""}
   `;
 
-  if (chartGameInstance) { chartGameInstance.destroy(); chartGameInstance=null; }
+  _destroyChart(chartGameInstance); chartGameInstance=null;
   if (gE.length) {
+    if (!_chartsAvailable()) { _showChartUnavailable("gameStatsChart"); return; }
+    _clearChartUnavailable("gameStatsChart");
     const cc2 = _chartColors();
     chartGameInstance = new Chart(document.getElementById("gameStatsChart"), {
       type:"bar",

@@ -32,20 +32,30 @@ function renderAdmin() {
   if (!App.adminDraft) initAdminDraft();
   syncAdminFilterPreferences();
   renderAdminPlayers();
-  renderAdminArchived();
   renderAdminDefaultSlots();
-  renderAdminGames();
-  renderAdminCrossovers();
+  renderAdminKnownOversized();
   renderAdminCardTypes();
   renderAdminKnownCards();
-  renderAdminKnownOversized();
+  renderAdminGames();
+  renderAdminCrossovers();
   renderAdminArchived();
   renderAdminBannedCards();
+  renderDataVersionNotice();
 }
 
 function syncAdminFilterPreferences() {
   _adminCardTypeFilter     = localStorage.getItem("dcAdminCardFilter")      || "";
   _adminOversizedSetFilter = localStorage.getItem("dcAdminOversizedFilter") || "";
+}
+
+function renderDataVersionNotice() {
+  const el = document.getElementById("dataVersionNotice");
+  if (!el) return;
+  el.innerHTML = `
+    <strong>Current data format:</strong> Export JSON v${EXPORT_VERSION}
+    <span>App version ${APP_VERSION}</span>
+    <span>${(App.data.history || []).length} logged game${(App.data.history || []).length === 1 ? "" : "s"} stored locally</span>
+  `;
 }
 
 /* ===== Inline warning helper ===== */
