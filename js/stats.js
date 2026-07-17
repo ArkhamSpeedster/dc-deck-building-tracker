@@ -69,7 +69,7 @@ function statCard(value, label, color) {
 
 function calcPlayerStats(playerName) {
   let wins=0,losses=0,ties=0,totalScore=0,totalNemesis=0,normalGames=0;
-  let rivalsGames=0,rivalsWins=0,rivalsLosses=0,rivalsTies=0,rivalsTotalScore=0,rivalsTotalNemesis=0;
+  let rivalsGames=0,rivalsWins=0,rivalsLosses=0,rivalsTies=0;
   let crisisPlayed=0,crisisWins=0,crisisLosses=0;
   const oversizedCount = {};
   const placements = {}; // {2:n, 3:n, 4:n, 5:n}
@@ -82,8 +82,6 @@ function calcPlayerStats(playerName) {
         if (h.teamWon) crisisWins++; else crisisLosses++;
       } else if (h.isRivals) {
         rivalsGames++;
-        rivalsTotalScore   += p.score   || 0;
-        rivalsTotalNemesis += p.nemesis || 0;
         if      (p.result==="Win")  rivalsWins++;
         else if (p.result==="Loss") rivalsLosses++;
         else if (p.result==="Tie")  rivalsTies++;
@@ -101,19 +99,17 @@ function calcPlayerStats(playerName) {
   });
 
   return {wins,losses,ties,totalScore,totalNemesis,normalGames,
-          rivalsGames,rivalsWins,rivalsLosses,rivalsTies,rivalsTotalScore,rivalsTotalNemesis,
+          rivalsGames,rivalsWins,rivalsLosses,rivalsTies,
           crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements};
 }
 
 function buildPlayerSummaryHTML(stats) {
   const {wins,losses,ties,totalScore,totalNemesis,normalGames,
-         rivalsGames,rivalsWins,rivalsLosses,rivalsTies,rivalsTotalScore,rivalsTotalNemesis,
+         rivalsGames,rivalsWins,rivalsLosses,rivalsTies,
          crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements} = stats;
   const totalAll   = normalGames+rivalsGames+crisisPlayed;
   const avgScore   = normalGames>0 ? (totalScore/normalGames).toFixed(1) : "—";
   const avgNemesis = normalGames>0 ? (totalNemesis/normalGames).toFixed(1) : "—";
-  const rivalsAvgScore   = rivalsGames>0 ? (rivalsTotalScore/rivalsGames).toFixed(1) : "—";
-  const rivalsAvgNemesis = rivalsGames>0 ? (rivalsTotalNemesis/rivalsGames).toFixed(1) : "—";
   const topCards   = Object.entries(oversizedCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   const placementHtml = Object.entries(placements).sort((a,b)=>a[0]-b[0])
@@ -138,8 +134,6 @@ function buildPlayerSummaryHTML(stats) {
       ${statCard(rivalsWins,"Wins","#22c55e")}
       ${statCard(rivalsLosses,"Losses","#ef4444")}
       ${statCard(rivalsTies,"Ties","#facc15")}
-      ${statCard(rivalsAvgScore,"Avg Score (VPs)")}
-      ${statCard(rivalsAvgNemesis,"Avg Nemesis Defeated")}
     </div>
     <h4 class="stats-section-label" style="margin-top:16px;">Crisis Games</h4>
     <div class="stats-grid">
@@ -440,7 +434,7 @@ function renderGameStats() {
   // Sort: By Base Game
   const sortedGE = [...gE].sort((a, b) => {
     let cmp = 0;
-    if (_sortGame.col === "name")  cmp = a[0].localeCompare(b[0]);
+    if (_sortGame.col === "name")  cmp = naturalCompare(a[0], b[0]);
     if (_sortGame.col === "count") cmp = a[1].normal - b[1].normal;
     return _sortGame.dir * cmp;
   });
@@ -448,7 +442,7 @@ function renderGameStats() {
   // Sort: By Crossover
   const sortedCE = [...cE].sort((a, b) => {
     let cmp = 0;
-    if (_sortCross.col === "name")  cmp = a[0].localeCompare(b[0]);
+    if (_sortCross.col === "name")  cmp = naturalCompare(a[0], b[0]);
     if (_sortCross.col === "bases") cmp = a[1].basesUsed.size - b[1].basesUsed.size;
     if (_sortCross.col === "count") cmp = a[1].games - b[1].games;
     return _sortCross.dir * cmp;
@@ -457,7 +451,7 @@ function renderGameStats() {
   // Sort: By Crisis
   const sortedCrE = [...crE].sort((a, b) => {
     let cmp = 0;
-    if (_sortCrisis.col === "name")    cmp = a[0].localeCompare(b[0]);
+    if (_sortCrisis.col === "name")    cmp = naturalCompare(a[0], b[0]);
     if (_sortCrisis.col === "bases")   cmp = a[1].basesUsed.size - b[1].basesUsed.size;
     if (_sortCrisis.col === "played")  cmp = a[1].crisis - b[1].crisis;
     if (_sortCrisis.col === "wins")    cmp = a[1].crisisWins - b[1].crisisWins;
@@ -502,7 +496,7 @@ function renderGameStats() {
         <th>Game</th>
         <th>Rivals Games</th>
       </tr></thead>
-      <tbody>${rE.sort((a,b)=>b[1].played-a[1].played).map(([n,s])=>`<tr><td>${_esc(n)}${_sGameTag(n)}</td><td>${_esc(s.played)}</td></tr>`).join("")}</tbody>
+      <tbody>${rE.sort((a,b)=>naturalCompare(a[0], b[0])).map(([n,s])=>`<tr><td>${_esc(n)}${_sGameTag(n)}</td><td>${_esc(s.played)}</td></tr>`).join("")}</tbody>
     </table>` : ""}
 
     ${cE.length ? `

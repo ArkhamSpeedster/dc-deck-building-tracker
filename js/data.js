@@ -4,7 +4,7 @@
 
 const STORAGE_KEY = "dcData";
 const DATA_FILE   = "dc_tracker_data.json";
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "0.9.0-beta";
 const EXPORT_VERSION = 2;
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 const NO_IMPORT_COUNT_LIMIT = Number.MAX_SAFE_INTEGER;
@@ -48,23 +48,41 @@ const DEFAULT_OVERSIZED_CARDS = [
   { name: "The Joker", fromSet: "Promo" },
 ];
 
+const NATURAL_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+function naturalCompare(a, b) {
+  return NATURAL_COLLATOR.compare(String(a || ""), String(b || ""));
+}
+
+const RIVALS_NAME_MIGRATIONS = {
+  "Rivals: Batman vs. The Joker (2014)": "Rivals 1: Batman vs Joker (2014)",
+  "Rivals: Batman vs Joker (2014)": "Rivals 1: Batman vs Joker (2014)",
+  "Rivals: Green Lantern vs. Sinestro (2018)": "Rivals 2: Green Lantern vs Sinestro (2018)",
+  "Rivals: Green Lantern vs Sinestro (2018)": "Rivals 2: Green Lantern vs Sinestro (2018)",
+  "Rivals: The Flash vs. Reverse-Flash (2023)": "Rivals 3: The Flash vs Reverse Flash (2023)",
+  "Rivals: The Flash vs Reverse Flash (2023)": "Rivals 3: The Flash vs Reverse Flash (2023)",
+  "Rivals: Shazam! vs. Black Adam (2024)": "Rivals 4: Shazam vs Black Adam (2024)",
+  "Rivals: Shazam vs Black Adam (2024)": "Rivals 4: Shazam vs Black Adam (2024)",
+  "Rivals: Superman vs. Lex Luthor (2025)": "Rivals 5: Superman vs Lex Luthor (2025)",
+  "Rivals: Superman vs Lex Luthor (2025)": "Rivals 5: Superman vs Lex Luthor (2025)",
+};
+
 /* ===== Default base games ordered by release year ===== */
 const DEFAULT_GAMES = [
   { name: "Original Core Set (2012)" },
   { name: "Heroes Unite (2014)" },
   { name: "Forever Evil (2014)" },
-  { name: "Rivals: Batman vs. The Joker (2014)", isRivals: true },
+  { name: "Rivals 1: Batman vs Joker (2014)", isRivals: true, rivalsCharacters: ["Batman", "Joker"] },
   { name: "Teen Titans (2015)" },
   { name: "Confrontations (2017)" },
   { name: "Dark Nights: Metal (2018)" },
-  { name: "Rivals: Green Lantern vs. Sinestro (2018)", isRivals: true },
+  { name: "Rivals 2: Green Lantern vs Sinestro (2018)", isRivals: true, rivalsCharacters: ["Green Lantern", "Sinestro"] },
   { name: "Injustice (2023)" },
-  { name: "Rivals: The Flash vs. Reverse-Flash (2023)", isRivals: true },
+  { name: "Rivals 3: The Flash vs Reverse Flash (2023)", isRivals: true, rivalsCharacters: ["The Flash", "Reverse Flash"] },
   { name: "Justice League: Dark (2024)" },
-  { name: "Rivals: Shazam! vs. Black Adam (2024)", isRivals: true },
+  { name: "Rivals 4: Shazam vs Black Adam (2024)", isRivals: true, rivalsCharacters: ["Shazam", "Black Adam"] },
   { name: "Teen Titans Go! (2025)" },
   { name: "Arkham Asylum (2025)" },
-  { name: "Rivals: Superman vs. Lex Luthor (2025)", isRivals: true },
+  { name: "Rivals 5: Superman vs Lex Luthor (2025)", isRivals: true, rivalsCharacters: ["Superman", "Lex Luthor"] },
 ];
 
 /* ===== Default crossover packs & crisis expansions ===== */
@@ -140,6 +158,54 @@ function _migrateBaseGame(d) {
   return d;
 }
 
+function _canonicalRivalsName(name) {
+  return RIVALS_NAME_MIGRATIONS[name] || name;
+}
+
+function _migrateRivalsGameNames(d) {
+  const renameGameObj = g => {
+    if (g?.name) g.name = _canonicalRivalsName(g.name);
+  };
+  const renameCardSet = c => {
+    if (!c || typeof c === "string") return;
+    if (c.set) c.set = _canonicalRivalsName(c.set);
+    if (c.type) c.type = _canonicalRivalsName(c.type);
+    if (c.fromSet) c.fromSet = _canonicalRivalsName(c.fromSet);
+  };
+  (d.games || []).forEach(renameGameObj);
+  (d.archivedGames || []).forEach(renameGameObj);
+  (d.knownCards || []).forEach(renameCardSet);
+  (d.archivedCards || []).forEach(renameCardSet);
+  (d.bannedCards || []).forEach(renameCardSet);
+  (d.removedCards || []).forEach(renameCardSet);
+  (d.knownOversized || []).forEach(renameCardSet);
+  (d.archivedOversized || []).forEach(renameCardSet);
+  (d.bannedOversized || []).forEach(renameCardSet);
+  (d.removedOversized || []).forEach(renameCardSet);
+  (d.history || []).forEach(h => {
+    if (h.game) h.game = _canonicalRivalsName(h.game);
+    (h.additional || []).forEach(renameCardSet);
+    (h.players || []).forEach(p => {
+      if (p.oversizedFrom) p.oversizedFrom = _canonicalRivalsName(p.oversizedFrom);
+      if (p.heroFrom) p.heroFrom = _canonicalRivalsName(p.heroFrom);
+    });
+  });
+  if (d.deletedGames) d.deletedGames = d.deletedGames.map(_canonicalRivalsName);
+  if (d.deletedCards) (d.deletedCards || []).forEach(renameCardSet);
+  if (d.deletedOversized) (d.deletedOversized || []).forEach(renameCardSet);
+  return d;
+}
+
+function _dedupeNamedObjects(list) {
+  const seen = new Set();
+  return (list || []).filter(item => {
+    const key = (item?.name || "").toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function _normalise(d) {
   if (!d.players)             d.players             = [];
   if (!d.games)               d.games               = [];
@@ -178,41 +244,53 @@ function _normalise(d) {
   if (d.nextGameNum == null) d.nextGameNum = (d.history.length || 0) + 1;
   if (d.defaultSlot1 === undefined) d.defaultSlot1 = null;
   if (d.defaultSlot2 === undefined) d.defaultSlot2 = null;
-  if (d.games) d.games.forEach(g => { delete g.isCrisis; if (g.isRivals === undefined) g.isRivals = false; });
+  _migrateBaseGame(d);
+  _migrateRivalsGameNames(d);
+  if (d.games) d.games.forEach(g => {
+    delete g.isCrisis;
+    if (g.isRivals === undefined) g.isRivals = false;
+    _normaliseRivalsCharacters(g);
+  });
+  if (d.archivedGames) d.archivedGames.forEach(g => _normaliseRivalsCharacters(g));
   d.archivedPlayers = d.archivedPlayers.map(a => typeof a === "string" ? { name: a } : a);
   d.history.forEach((h, i) => {
     if (!h.gameNum) h.gameNum = i + 1;
     if (h.isRivals === undefined)
       h.isRivals = !h.isCrisis && ((d.games || []).find(g => g.name === h.game)?.isRivals || false);
   });
+  d.games = _dedupeNamedObjects(d.games);
+  d.archivedGames = _dedupeNamedObjects(d.archivedGames);
 
-  // Migrate "Base Game" to "Original Core Set (2012)"
-  _migrateBaseGame(d);
-
-  // Ensure "Original Core Set (2012)" is always in the games list (undeletable default)
-  if (!d.games.some(g => g.name === "Original Core Set (2012)")) {
-    d.games.unshift({ name: "Original Core Set (2012)" });
-  }
-
-  // Seed default base games (skip any the user archived)
+  // Base games and crossovers are app-managed. Restore maintained defaults even
+  // when older user data archived/deleted them.
   DEFAULT_GAMES.forEach(def => {
-    const inActive   = d.games.some(g => g.name === def.name);
-    const inArchived = d.archivedGames.some(g => g.name === def.name);
-    if (!inActive && !inArchived) d.games.push({ isRivals: false, ...def });
+    d.archivedGames = (d.archivedGames || []).filter(g => g.name !== def.name);
+    const active = d.games.find(g => g.name === def.name);
+    if (active) {
+      active.isRivals = !!def.isRivals;
+      if (def.rivalsCharacters) active.rivalsCharacters = [...def.rivalsCharacters];
+      _normaliseRivalsCharacters(active);
+    } else {
+      d.games.push(_normaliseRivalsCharacters({ isRivals: false, ...def }));
+    }
   });
 
-  // Seed default crossover packs & crisis expansions (skip any the user archived)
+  // Seed default crossover packs & crisis expansions.
   if (!d.crossovers) d.crossovers = [{ name: "None", isCrisis: false }];
   DEFAULT_CROSSOVERS.forEach(def => {
-    const inActive   = d.crossovers.some(c => c.name === def.name);
-    const inArchived = d.archivedCrossovers.some(c => c.name === def.name);
-    if (!inActive && !inArchived) d.crossovers.push({ ...def });
+    d.archivedCrossovers = (d.archivedCrossovers || []).filter(c => c.name !== def.name);
+    const active = d.crossovers.find(c => c.name === def.name);
+    if (active) {
+      active.isCrisis = !!def.isCrisis;
+    } else {
+      d.crossovers.push({ ...def });
+    }
   });
 
   DEFAULT_CARD_TYPES.forEach(type => {
     if (!d.cardTypes.some(t => t.toLowerCase() === type.toLowerCase())) d.cardTypes.push(type);
   });
-  d.cardTypes.sort((a, b) => a.localeCompare(b));
+  d.cardTypes.sort(naturalCompare);
 
   _restoreLibrariesFromHistory(d);
   _renumberHistoryByDate(d);
@@ -256,6 +334,30 @@ function _normaliseAdditionalCards(d) {
   });
 }
 
+function _inferRivalsCharacters(name) {
+  const known = {
+    "Rivals 1: Batman vs Joker (2014)": ["Batman", "Joker"],
+    "Rivals 2: Green Lantern vs Sinestro (2018)": ["Green Lantern", "Sinestro"],
+    "Rivals 3: The Flash vs Reverse Flash (2023)": ["The Flash", "Reverse Flash"],
+    "Rivals 4: Shazam vs Black Adam (2024)": ["Shazam", "Black Adam"],
+    "Rivals 5: Superman vs Lex Luthor (2025)": ["Superman", "Lex Luthor"],
+  };
+  const canonical = _canonicalRivalsName(name);
+  if (known[canonical]) return [...known[canonical]];
+  const parsed = String(canonical || "").match(/Rivals(?:\s+\d+)?:\s*(.+?)\s+vs\.?\s+(.+?)(?:\s*\(|$)/i);
+  return parsed ? [parsed[1].trim(), parsed[2].trim()] : [];
+}
+
+function _normaliseRivalsCharacters(game) {
+  if (!game || !game.isRivals) {
+    if (game) delete game.rivalsCharacters;
+    return game;
+  }
+  const chars = Array.isArray(game.rivalsCharacters) ? game.rivalsCharacters : _inferRivalsCharacters(game.name);
+  game.rivalsCharacters = chars.map(c => String(c || "").trim()).filter(Boolean).slice(0, 2);
+  return game;
+}
+
 function _cardExists(list, name, set) {
   return (list || []).some(k =>
     (k.name || "").toLowerCase() === (name || "").toLowerCase() &&
@@ -273,7 +375,7 @@ function _oversizedExists(list, name, fromSet) {
 function _restoreLibrariesFromHistory(d) {
   (d.history || []).forEach(h => {
     if (h.game && !d.games.some(g => g.name === h.game) && !d.archivedGames.some(g => g.name === h.game)) {
-      d.games.push({ name: h.game, isRivals: !!h.isRivals });
+      d.games.push(_normaliseRivalsCharacters({ name: h.game, isRivals: !!h.isRivals }));
     }
     if (h.cross && !d.crossovers.some(c => c.name === h.cross) && !d.archivedCrossovers.some(c => c.name === h.cross)) {
       d.crossovers.push({ name: h.cross, isCrisis: !!h.isCrisis });
@@ -540,10 +642,16 @@ function _cleanStringArray(obj, key, maxEntries, maxLen) {
 
 function _cleanGame(item, idx) {
   const obj = _importObject(item, `games[${idx}]`);
-  return {
+  const game = {
     name: _importString(obj.name, `games[${idx}].name`, IMPORT_LIMITS.setName),
     isRivals: _importBool(obj.isRivals, `games[${idx}].isRivals`, false),
   };
+  if (game.isRivals && obj.rivalsCharacters !== undefined) {
+    game.rivalsCharacters = _importArray(obj, "rivalsCharacters", 2).map((c, cIdx) =>
+      _importString(c, `games[${idx}].rivalsCharacters[${cIdx}]`, IMPORT_LIMITS.name)
+    );
+  }
+  return _normaliseRivalsCharacters(game);
 }
 
 function _cleanCrossover(item, idx) {
@@ -583,7 +691,9 @@ function _cleanHistoryPlayer(item, idx, gameIdx) {
     name: _importString(obj.name, `history[${gameIdx}].players[${idx}].name`, IMPORT_LIMITS.playerName),
     oversizedCard: _importString(obj.oversizedCard || obj.heroUsed, `history[${gameIdx}].players[${idx}].oversizedCard`, IMPORT_LIMITS.name),
     oversizedFrom: _importString(obj.oversizedFrom || obj.heroFrom, `history[${gameIdx}].players[${idx}].oversizedFrom`, IMPORT_LIMITS.setName),
+    rivalsCharacter: _importString(obj.rivalsCharacter, `history[${gameIdx}].players[${idx}].rivalsCharacter`, IMPORT_LIMITS.name),
     score: _importInt(obj.score, `history[${gameIdx}].players[${idx}].score`, 0, 0, 9999),
+    deckCount: _importInt(obj.deckCount, `history[${gameIdx}].players[${idx}].deckCount`, 0, 0, 9999),
     nemesis: _importInt(obj.nemesis, `history[${gameIdx}].players[${idx}].nemesis`, 0, 0, 999),
     result: _importString(obj.result, `history[${gameIdx}].players[${idx}].result`, 10),
     place: _importInt(obj.place, `history[${gameIdx}].players[${idx}].place`, 0, 0, 5),
@@ -753,8 +863,6 @@ function dateSortKey(dateStr) {
 }
 
 /* ===== Archived-list cleanup ===== */
-function restoreDeletedGame(name)             { App.data.archivedGames      = (App.data.archivedGames      || []).filter(g => g.name !== name); }
-function restoreDeletedCrossover(name)        { App.data.archivedCrossovers = (App.data.archivedCrossovers || []).filter(c => c.name !== name); }
 function restoreDeletedCard(name, set)        { App.data.archivedCards      = (App.data.archivedCards      || []).filter(k => !(k.name === name && (k.set || k.type || "Other") === set)); }
 function restoreDeletedOversized(name, fromSet){ App.data.archivedOversized  = (App.data.archivedOversized  || []).filter(k => !(k.name === name && k.fromSet === fromSet)); }
 function restoreBannedCard(name, set)         { App.data.bannedCards        = (App.data.bannedCards        || []).filter(k => !(k.name === name && (k.set || k.type || "Other") === set)); }

@@ -2,7 +2,7 @@
 
 An unofficial companion and statistics tracker for the **DC Deck-Building Game** created by Cryptozoic Entertainment.
 
-DeckLedger helps you log game nights, track player stats, compare performance, and remember which oversized and additional cards saw play. It is built as a simple responsive browser app with no account, no server, and no build step.
+DeckLedger is currently in beta. It helps you log game nights, track player stats, compare performance, and remember which oversized and additional cards saw play. It is built as a simple responsive browser app with no account, no server, and no build step.
 
 > **Important data note:** DeckLedger stores your data only in your browser's `localStorage`. Browser cleanup, private/incognito mode, clearing site data, switching browsers, using a different device, or future version changes can erase or affect saves. Export JSON backups regularly. Only import JSON files you trust; imported files overwrite local data and may contain unwanted or misleading data.
 
@@ -30,6 +30,7 @@ The sample data is also bundled in the app so `Load Sample Data` works when open
 
 - Game sessions with base game, crossover/expansion, date, players, oversized cards, scores, nemesis defeats, and optional comments.
 - Normal, Rivals, and Crisis games.
+- Rivals-specific character assignment and win/loss results.
 - Player win rates, average scores, placements, Crisis results, Rivals results, and most-used oversized cards.
 - Overall set usage, crossover usage, top oversized cards, top additional cards, and outcome summaries.
 - Saved additional cards with set and card type.
@@ -97,9 +98,11 @@ Batman and Superman from the Original Core Set are required defaults so a new ga
 
 ## Supported Sets
 
-Base games are pre-loaded with release years and Rivals flags where applicable. You can archive, remove, or add your own sets in Settings.
+Base games are pre-loaded with release years and Rivals flags where applicable. These are maintained by DeckLedger updates instead of being editable in Settings, which keeps game logging from breaking.
 
-Crossovers and Crisis expansions are also pre-loaded, including Crossover Packs, Crisis Expansion Packs, and Justice League Dark Expansion. You can archive, remove, or add your own expansions.
+Crossovers and Crisis expansions are also pre-loaded, including Crossover Packs, Crisis Expansion Packs, and Justice League Dark Expansion. These are maintained by DeckLedger updates as well.
+
+Rivals games are numbered for cleaner sorting, such as `Rivals 1: Batman vs Joker`. They use a shared Rivals character pool, so you can mix playable characters across Rivals sets, such as Batman vs. Lex Luthor or The Flash vs. Sinestro.
 
 ## Settings Overview
 
@@ -109,7 +112,7 @@ Crossovers and Crisis expansions are also pre-loaded, including Crossover Packs,
 - `Remove` deletes an item from Settings after confirmation. Existing history stays unchanged and can show a removed label.
 - Settings can store up to 25 active players.
 - Logged games still use 2 to 5 players, with Rivals limited to exactly 2.
-- Card lists, base games, crossovers, and logged game history do not have app-imposed count limits, though browser storage still has practical limits.
+- Card lists and logged game history do not have app-imposed count limits, though browser storage still has practical limits.
 - Player comparison in Stats supports up to 5 players at a time for readability.
 - Settings include compact controls for exporting/importing JSON, loading demo data, and resetting local data.
 

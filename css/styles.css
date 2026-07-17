@@ -274,6 +274,7 @@ button.success:hover { filter:brightness(1.1); transform:translateY(-1px); }
 .score-nemesis-group { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .score-nemesis-group input { flex:0 0 80px; }
 .field-inline-label { display:inline; font-size:12px; color:var(--text-dim); white-space:nowrap; margin:0; }
+.compact-inline-input { max-width:150px; min-width:110px; flex:0 1 150px; }
 
 /* Game saved in-page banner */
 .game-saved-banner {
@@ -348,9 +349,9 @@ button.success:hover { filter:brightness(1.1); transform:translateY(-1px); }
 .history-table tbody tr:nth-child(odd)  { background:transparent; }
 .history-table tbody tr:hover { background:var(--accent-soft); }
 
-.badge-crisis { background:rgba(126,34,206,.25); color:#d8b4fe; border:1px solid rgba(168,85,247,.35); font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; }
+.badge-crisis { background:rgba(190,88,14,.22); color:#fed7aa; border:1px solid rgba(249,115,22,.42); font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; }
 .badge-normal { background:var(--accent-soft); color:#93c5fd; border:1px solid rgba(59,130,246,.3); font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; }
-[data-theme="light"] .badge-crisis { color:#7e22ce; }
+[data-theme="light"] .badge-crisis { background:rgba(249,115,22,.14); color:#9a3412; border-color:rgba(234,88,12,.35); }
 [data-theme="light"] .badge-normal { color:#1d4ed8; }
 
 /* Player name in history coloured by result */
@@ -465,10 +466,10 @@ canvas { background:var(--bg3); border:1px solid var(--border); border-radius:va
 
 /* Rivals badge in history / stats */
 .badge-rivals {
-  background:rgba(109,40,217,.25); color:#ddd6fe; border:1px solid rgba(139,92,246,.35);
+  background:rgba(20,184,166,.20); color:#99f6e4; border:1px solid rgba(45,212,191,.38);
   font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; margin-left:6px;
 }
-[data-theme="light"] .badge-rivals { color:#6d28d9; }
+[data-theme="light"] .badge-rivals { background:rgba(20,184,166,.13); color:#0f766e; border-color:rgba(13,148,136,.32); }
 
 /* Oversized cascade: set filter + card select side-by-side */
 .oversized-cascade {
@@ -507,12 +508,15 @@ canvas { background:var(--bg3); border:1px solid var(--border); border-radius:va
 .admin-row > button[title="Up"],
 .admin-row > button[title="Down"] { min-width:34px; width:34px; padding-left:0; padding-right:0; }
 .admin-row .admin-input { flex:1 1 210px; min-width:160px; max-width:260px; }
-.admin-locked     { flex:1; color:var(--text-dim); font-style:italic; padding:6px 4px; }
 .admin-lock-badge {
   display:inline-flex; align-items:center; justify-content:center;
   font-size:11px; color:var(--text-dim); padding:2px 8px; min-width:58px;
   white-space:nowrap;
 }
+.admin-rivals-badge { background:rgba(20,184,166,.14); color:#5eead4; border:1px solid rgba(20,184,166,.35); border-radius:999px; }
+.admin-crisis-badge { background:rgba(249,115,22,.14); color:#fed7aa; border:1px solid rgba(249,115,22,.38); border-radius:999px; }
+[data-theme="light"] .admin-rivals-badge { color:#0f766e; background:rgba(20,184,166,.12); border-color:rgba(13,148,136,.28); }
+[data-theme="light"] .admin-crisis-badge { color:#9a3412; background:rgba(249,115,22,.14); border-color:rgba(234,88,12,.32); }
 .locked-row { opacity:.7; }
 
 .crisis-inline-label {
@@ -644,6 +648,10 @@ canvas { background:var(--bg3); border:1px solid var(--border); border-radius:va
 .home-title {
   font-size:clamp(38px,8vw,68px); font-weight:900; letter-spacing:0;
   color:var(--text); margin-bottom:8px;
+}
+.home-version {
+  margin:-2px 0 10px; color:var(--accent); font-size:13px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.08em;
 }
 .home-subtitle { color:var(--text-muted); font-size:clamp(15px,2vw,19px); max-width:720px; margin-bottom:12px; }
 .home-about { line-height:1.7; font-size:14px; color:var(--text-muted); }
@@ -963,8 +971,7 @@ canvas { background:var(--bg3); border:1px solid var(--border); border-radius:va
   }
   .admin-static,
   .admin-card-name,
-  .admin-row .admin-input,
-  .admin-locked {
+  .admin-row .admin-input {
     grid-column:1 / -1;
     min-width:0;
     max-width:none;

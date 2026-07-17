@@ -27,7 +27,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "isRivals": false
       },
       {
-        "name": "Rivals: Batman vs. The Joker (2014)",
+        "name": "Rivals 1: Batman vs Joker (2014)",
         "isRivals": true
       },
       {
@@ -43,7 +43,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "isRivals": false
       },
       {
-        "name": "Rivals: Green Lantern vs. Sinestro (2018)",
+        "name": "Rivals 2: Green Lantern vs Sinestro (2018)",
         "isRivals": true
       },
       {
@@ -51,7 +51,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "isRivals": false
       },
       {
-        "name": "Rivals: The Flash vs. Reverse-Flash (2023)",
+        "name": "Rivals 3: The Flash vs Reverse Flash (2023)",
         "isRivals": true
       },
       {
@@ -59,7 +59,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "isRivals": false
       },
       {
-        "name": "Rivals: Shazam! vs. Black Adam (2024)",
+        "name": "Rivals 4: Shazam vs Black Adam (2024)",
         "isRivals": true
       },
       {
@@ -71,7 +71,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "isRivals": false
       },
       {
-        "name": "Rivals: Superman vs. Lex Luthor (2025)",
+        "name": "Rivals 5: Superman vs Lex Luthor (2025)",
         "isRivals": true
       }
     ],
@@ -316,7 +316,7 @@ const DECKLEDGER_SAMPLE_DATA = {
       },
       {
         "gameNum": 4,
-        "game": "Rivals: Batman vs. The Joker (2014)",
+        "game": "Rivals 1: Batman vs Joker (2014)",
         "cross": "None",
         "isCrisis": false,
         "isRivals": true,
@@ -474,7 +474,7 @@ const DECKLEDGER_SAMPLE_DATA = {
       },
       {
         "gameNum": 8,
-        "game": "Rivals: Green Lantern vs. Sinestro (2018)",
+        "game": "Rivals 2: Green Lantern vs Sinestro (2018)",
         "cross": "None",
         "isCrisis": false,
         "isRivals": true,

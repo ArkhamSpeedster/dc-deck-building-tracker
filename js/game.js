@@ -5,6 +5,13 @@
 const CARD_TYPES = ["Promo", "Other"];
 let _gameIsDirty = false;
 let _editingEntry = null;
+const RIVALS_CHARACTER_SETS = [
+  { match: /Batman vs\.?(?: The)? Joker/i, characters: ["Batman", "Joker"] },
+  { match: /Green Lantern vs\.? Sinestro/i, characters: ["Green Lantern", "Sinestro"] },
+  { match: /The Flash vs\.? Reverse-?Flash/i, characters: ["The Flash", "Reverse Flash"] },
+  { match: /Shazam!? vs\.? Black Adam/i, characters: ["Shazam", "Black Adam"] },
+  { match: /Superman vs\.? Lex Luthor/i, characters: ["Superman", "Lex Luthor"] },
+];
 
 function _esc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -12,10 +19,10 @@ function _esc(s) {
 
 function getAllSets() {
   const named = [
-    ...App.data.games.map(g => g.name),
+    ...App.data.games.filter(g => !g.isRivals).map(g => g.name),
     ...App.data.crossovers.filter(c => c.name !== "None").map(c => c.name),
     "Promo",
-  ].sort((a, b) => a.localeCompare(b));
+  ].sort(naturalCompare);
   return [...named, "Other"];
 }
 
@@ -27,9 +34,36 @@ function isRivalsMode() {
   return App.data.games.find(g => g.name === selectedName)?.isRivals || false;
 }
 
+function isRivalsSetName(name) {
+  return !!App.data.games.find(g => g.name === name && g.isRivals);
+}
+
+function getRivalsCharacters(baseName) {
+  const chars = [];
+  App.data.games.filter(g => g.isRivals).forEach(g => {
+    let pair = Array.isArray(g.rivalsCharacters) && g.rivalsCharacters.length === 2 ? g.rivalsCharacters : [];
+    if (!pair.length) {
+      const found = RIVALS_CHARACTER_SETS.find(set => set.match.test(g.name || ""));
+      if (found) pair = found.characters;
+    }
+    if (!pair.length) {
+      const parsed = String(g.name || "").match(/Rivals(?:\s+\d+)?:\s*(.+?)\s+vs\.?\s+(.+?)(?:\s*\(|$)/i);
+      if (parsed) pair = [parsed[1].trim(), parsed[2].trim()];
+    }
+    pair.forEach(ch => {
+      if (ch && !chars.some(existing => existing.toLowerCase() === ch.toLowerCase())) chars.push(ch);
+    });
+  });
+  return chars.sort(naturalCompare);
+}
+
 function updateRivalsHint() {
   const hint = document.getElementById("rivalsHint");
-  if (hint) hint.style.display = isRivalsMode() ? "block" : "none";
+  const activeRivals = isRivalsMode() && !isCrisisMode();
+  if (hint) hint.style.display = activeRivals ? "block" : "none";
+  const fields = document.getElementById("rivalsResultFields");
+  if (fields) fields.style.display = activeRivals ? "block" : "none";
+  updateRivalsWinnerOptions();
 }
 
 /* ===== Setup ===== */
@@ -38,22 +72,32 @@ function renderGameSetup() {
   const baseSelect = document.getElementById("baseGameSelect");
   const prev = baseSelect.value;
   baseSelect.innerHTML =
-    data.games.map(g => `<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
+    [...data.games]
+      .sort((a, b) => (a.name === "Original Core Set (2012)" ? -1 : b.name === "Original Core Set (2012)" ? 1 : naturalCompare(a.name, b.name)))
+      .map(g => `<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
   if (prev) baseSelect.value = prev;
+  if (!baseSelect.value && baseSelect.options.length) baseSelect.value = "Original Core Set (2012)";
 
   const crossSelect = document.getElementById("crossoverSelect");
   const prevC = crossSelect.value;
+  const baseIsRivals = isRivalsMode();
   crossSelect.innerHTML =
-    data.crossovers.map(c => `<option value="${_esc(c.name)}" data-crisis="${c.isCrisis}">${_esc(c.name)}</option>`).join("");
+    [...data.crossovers]
+      .filter(c => !baseIsRivals || !c.isCrisis)
+      .sort((a, b) => (a.name === "None" ? -1 : b.name === "None" ? 1 : naturalCompare(a.name, b.name)))
+      .map(c => `<option value="${_esc(c.name)}" data-crisis="${c.isCrisis}">${_esc(c.name)}</option>`).join("");
   if (prevC) crossSelect.value = prevC;
+  if (!crossSelect.value && crossSelect.options.length) crossSelect.value = "None";
 
   checkCrisis();
   updateRivalsHint();
 }
 
 function onBaseGameChange() {
+  renderGameSetup();
   updateRivalsHint();
   updateAddPlayerBtn();
+  checkCrisis();
   // Update set filter on existing rows that haven't chosen a card yet
   const baseGame = document.getElementById("baseGameSelect")?.value || "";
   const baseHasCards = baseGame && App.data.knownOversized.some(k => k.fromSet === baseGame);
@@ -70,56 +114,13 @@ function onBaseGameChange() {
   });
 }
 
-function confirmNewBaseGame() {
-  const inp = document.getElementById("newBaseGameInput");
-  const name = inp.value.trim();
-  if (!name) { showToast("Enter a game name.", "error"); return; }
-  if (name.length > 20) { showToast("Name must be ≤ 20 characters.", "error"); return; }
-  if (App.data.games.some(g => g.name.toLowerCase() === name.toLowerCase())) {
-    showToast(`"${name}" already exists.`, "error"); return;
-  }
-  const isRivals = document.getElementById("newBaseGameRivals")?.checked || false;
-  App.data.games.push({ name, isRivals });
-  restoreDeletedGame(name);
-  if (App.adminDraft) App.adminDraft.games = [...App.data.games];
-  saveData();
-  inp.value = "";
-  const rivChk = document.getElementById("newBaseGameRivals");
-  if (rivChk) rivChk.checked = false;
-  document.getElementById("newBaseGameRow").style.display = "none";
-  renderGameSetup();
-  document.getElementById("baseGameSelect").value = name;
-  updateRivalsHint();
-  showToast(`Base game "${name}" added.`, "success", 2500);
-}
-
-function confirmNewCrossover() {
-  const inp = document.getElementById("newCrossoverInput");
-  const name = inp.value.trim();
-  if (!name) { showToast("Enter a crossover name.", "error"); return; }
-  if (name.length > 20) { showToast("Name must be ≤ 20 characters.", "error"); return; }
-  if (App.data.crossovers.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-    showToast(`"${name}" already exists.`, "error"); return;
-  }
-  const isCrisisNew = document.getElementById("newCrossoverCrisis")?.checked || false;
-  App.data.crossovers.push({ name, isCrisis: isCrisisNew });
-  restoreDeletedCrossover(name);
-  if (App.adminDraft) App.adminDraft.crossovers = [...App.data.crossovers];
-  saveData();
-  inp.value = "";
-  document.getElementById("newCrossoverRow").style.display = "none";
-  renderGameSetup();
-  document.getElementById("crossoverSelect").value = name;
-  checkCrisis();
-  showToast(`Crossover "${name}" added.`, "success", 2500);
-}
-
 function onCrossoverChange() {
   checkCrisis();
 }
 
 function checkCrisis() {
   const crisis = isCrisisMode();
+  const rivals = isRivalsMode();
   const editMode = _editingEntry != null;
   document.getElementById("saveBarNormal").style.display = editMode ? "none" : "block";
   document.getElementById("editModeBanner").style.display = editMode ? "flex" : "none";
@@ -129,6 +130,7 @@ function checkCrisis() {
   saveBtn.style.display   = crisis ? "none"         : "inline-block";
   crisisBtn.style.display = crisis ? "inline-block" : "none";
   document.getElementById("crisisTeamFields").style.display = crisis ? "block" : "none";
+  document.getElementById("rivalsResultFields").style.display = rivals && !crisis ? "block" : "none";
 
   const existing = [...document.querySelectorAll(".player-row")];
   const saved = existing.map(r => ({
@@ -136,6 +138,7 @@ function checkCrisis() {
     oversized:    r.dataset.oversizedName || "",
     oversizedFrom:r.dataset.oversizedFrom || "",
     oversizedKey: r.querySelector(".oversizedCard")?.value || "",
+    rivalsCharacter: r.querySelector(".rivalsCharacter")?.value || r.dataset.rivalsCharacter || "",
     score:        r.querySelector(".score")?.value   || "",
     nemesis:      r.querySelector(".nemesis")?.value || "",
   }));
@@ -152,6 +155,7 @@ function checkCrisis() {
   seed.forEach(d => _appendPlayerRow(d));
   updateAllPlayerSelects();
   updateAddPlayerBtn();
+  updateRivalsWinnerOptions();
 }
 
 function isCrisisMode() {
@@ -168,6 +172,7 @@ function _appendPlayerRow(prefill) {
   prefill = prefill || {};
   const data    = App.data;
   const crisis  = isCrisisMode();
+  const rivals  = isRivalsMode() && !crisis;
   const container = document.getElementById("playerContainer");
 
   const knownKey  = prefill.oversizedKey && prefill.oversizedKey !== "__new__" ? prefill.oversizedKey : "";
@@ -178,8 +183,9 @@ function _appendPlayerRow(prefill) {
   div.className = "player-row fade";
   div.dataset.oversizedName = typedName;
   div.dataset.oversizedFrom = typedFrom;
+  div.dataset.rivalsCharacter = prefill.rivalsCharacter || typedName || "";
 
-  const playerOpts = data.players.map(p =>
+  const playerOpts = [...data.players].sort(naturalCompare).map(p =>
     `<option value="${_esc(p)}" ${p === prefill.name ? "selected" : ""}>${_esc(p)}</option>`
   ).join("");
   const extraOpt = (_editingEntry != null) && prefill.name && !data.players.includes(prefill.name)
@@ -198,11 +204,24 @@ function _appendPlayerRow(prefill) {
   const otherChosen = [...document.querySelectorAll(".player-row .oversizedCard")]
     .map(s => s.value).filter(v => v && v !== "");
   const ovOptions = _buildOversizedOptions(otherChosen, "");
+  const rivalsChars = getRivalsCharacters(document.getElementById("baseGameSelect")?.value);
+  const selectedRivalsCharacter = prefill.rivalsCharacter || typedName || "";
+  const rivalsCharOptions = rivalsChars.map(ch =>
+    `<option value="${_esc(ch)}" ${ch === selectedRivalsCharacter ? "selected" : ""}>${_esc(ch)}</option>`
+  ).join("");
 
   div.innerHTML = `
     <select class="pname" onchange="updateAllPlayerSelects(); updateAddPlayerBtn(); _markGameDirty();">
       ${extraOpt}${playerOpts}
     </select>
+    ${rivals ? `
+    <div class="oversized-group rivals-character-group">
+      <label class="field-inline-label">Character:</label>
+      <select class="rivalsCharacter" onchange="onRivalsCharacterChange(this); _markGameDirty();">
+        <option value="" disabled ${selectedRivalsCharacter ? "" : "selected"} class="placeholder-opt">— Choose Character —</option>
+        ${rivalsCharOptions}
+      </select>
+    </div>` : `
     <div class="oversized-group">
       <label class="field-inline-label">Oversized Card:</label>
       <div class="oversized-cascade">
@@ -214,8 +233,8 @@ function _appendPlayerRow(prefill) {
           ${ovOptions}
         </select>
       </div>
-    </div>
-    ${crisis ? "" : `
+    </div>`}
+    ${crisis || rivals ? "" : `
       <div class="score-nemesis-group">
         <label class="field-inline-label">Score (VPs):</label>
         <input type="number" class="score" min="0" value="${scoreVal}" oninput="_markGameDirty();">
@@ -227,6 +246,12 @@ function _appendPlayerRow(prefill) {
   `;
   container.appendChild(div);
   _tintPlaceholders(div);
+
+  if (rivals) {
+    refreshAllRivalsCharacterDropdowns();
+    updateRivalsWinnerOptions();
+    return;
+  }
 
   const cardSel      = div.querySelector(".oversizedCard");
   const setFilterSel = div.querySelector(".oversizedSetFilter");
@@ -295,13 +320,54 @@ function _buildOversizedOptions(otherChosen, setFilter) {
     .filter(k => {
       if (otherChosen.includes(`${k.name}||${k.fromSet}`)) return false;
       if (setFilter && k.fromSet !== setFilter) return false;
+      if (isRivalsSetName(k.fromSet)) return false;
       if (banned.some(b => b.name === k.name && b.fromSet === k.fromSet)) return false;
       return true;
     })
+    .sort((a, b) => naturalCompare(a.name, b.name) || naturalCompare(a.fromSet, b.fromSet))
     .map(k => {
       const val = `${k.name}||${k.fromSet}`;
       return `<option value="${_esc(val)}">${_esc(k.name)} (${_esc(k.fromSet)})</option>`;
     }).join("");
+}
+
+function onRivalsCharacterChange(sel) {
+  const row = sel.closest(".player-row");
+  row.dataset.rivalsCharacter = sel.value || "";
+  refreshAllRivalsCharacterDropdowns();
+  updateRivalsWinnerOptions();
+}
+
+function refreshAllRivalsCharacterDropdowns() {
+  if (!isRivalsMode()) return;
+  const rows = [...document.querySelectorAll(".player-row")];
+  const chars = getRivalsCharacters(document.getElementById("baseGameSelect")?.value);
+  rows.forEach(row => {
+    const sel = row.querySelector(".rivalsCharacter");
+    if (!sel) return;
+    const current = sel.value;
+    const otherChosen = rows
+      .filter(r => r !== row)
+      .map(r => r.querySelector(".rivalsCharacter")?.value)
+      .filter(Boolean);
+    sel.innerHTML = `<option value="" disabled ${current ? "" : "selected"} class="placeholder-opt">— Choose Character —</option>` +
+      chars.map(ch => `<option value="${_esc(ch)}" ${ch === current ? "selected" : ""} ${otherChosen.includes(ch) ? "disabled" : ""}>${_esc(ch)}</option>`).join("");
+    row.dataset.rivalsCharacter = sel.value || "";
+  });
+}
+
+function updateRivalsWinnerOptions() {
+  const sel = document.getElementById("rivalsWinnerSelect");
+  if (!sel) return;
+  const current = sel.value;
+  const rows = [...document.querySelectorAll(".player-row")];
+  sel.innerHTML = rows.map(row => {
+    const name = row.querySelector(".pname")?.value || "";
+    const ch = row.querySelector(".rivalsCharacter")?.value || "";
+    const label = ch ? `${name} (${ch})` : name;
+    return name ? `<option value="${_esc(name)}">${_esc(label)}</option>` : "";
+  }).join("");
+  if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
 }
 
 function _tintPlaceholders(scope) {
@@ -393,6 +459,8 @@ function removePlayerRow(btn) {
   updateAllPlayerSelects();
   updateAddPlayerBtn();
   refreshAllOversizedDropdowns();
+  refreshAllRivalsCharacterDropdowns();
+  updateRivalsWinnerOptions();
   _markGameDirty();
 }
 
@@ -417,7 +485,7 @@ function addPlayerToGame() {
     _showAddPlayerMsg("All players are already added. Go to Settings to add more players.");
     return;
   }
-  if (App.data.knownOversized.length < rows.length + 1) {
+  if (!rivals && App.data.knownOversized.length < rows.length + 1) {
     _showAddPlayerMsg(`Not enough oversized cards — need at least ${rows.length + 1} but only ${App.data.knownOversized.length} saved. Add more in Settings.`);
     return;
   }
@@ -461,6 +529,7 @@ function updateAllPlayerSelects() {
       opt.style.color = others.includes(opt.value) ? "var(--text-dim)" : "";
     });
   });
+  updateRivalsWinnerOptions();
 }
 
 function _markGameDirty() {
@@ -523,7 +592,7 @@ function addAdditionalCard(prefillName, prefillSet, prefillCardType) {
   const div = document.createElement("div");
   div.className = "additional-card-row card-picker-row fade";
 
-  const sets = [...new Set(App.data.knownCards.map(k => k.set || "Other"))].sort();
+  const sets = [...new Set(App.data.knownCards.map(k => k.set || "Other"))].sort(naturalCompare);
   const setFilterHtml = `<select class="cardSetPicker" onchange="onAdditionalCardSetFilter(this)">
       <option value="" disabled selected class="placeholder-opt">— Choose Set —</option>
       ${sets.map(s => `<option value="${_esc(s)}">${_esc(s)}</option>`).join("")}
@@ -608,9 +677,13 @@ function validateGame() {
     _showGameError("Please select a game date."); return false;
   }
 
+  if (rivals && crisis) {
+    _showGameError("Crisis expansions cannot be selected with Rivals base games."); return false;
+  }
+
   // Rivals player count check
-  if (rivals && rows.length > 2) {
-    _showGameError("Rivals mode allows a maximum of 2 players. Please remove extra players."); return false;
+  if (rivals && rows.length !== 2) {
+    _showGameError("Rivals mode requires exactly 2 players."); return false;
   }
 
   const playerNames = rows.map(r => r.querySelector(".pname").value);
@@ -625,11 +698,14 @@ function validateGame() {
 
     if (!pname) { _showGameError("All players must have a name."); return false; }
 
-    if (!ovSel || !ovSel.value) {
+    if (rivals) {
+      const character = row.querySelector(".rivalsCharacter")?.value || "";
+      if (!character) { _showGameError(`Please select a Rivals character for ${pname}.`); return false; }
+    } else if (!ovSel || !ovSel.value) {
       _showGameError(`Please select an Oversized Card for ${pname}.`); return false;
     }
 
-    if (!crisis) {
+    if (!crisis && !rivals) {
       const score   = row.querySelector(".score");
       const nemesis = row.querySelector(".nemesis");
       if (!score || score.value === "") {
@@ -647,22 +723,34 @@ function validateGame() {
     }
   }
 
+  if (rivals) {
+    const chars = rows.map(r => r.querySelector(".rivalsCharacter")?.value || "");
+    if (chars[0] && chars[1] && chars[0] === chars[1]) {
+      _showGameError(`Duplicate Rivals character: "${chars[0]}".`); return false;
+    }
+    if (!document.getElementById("rivalsWinnerSelect")?.value) {
+      _showGameError("Choose the Rivals winner."); return false;
+    }
+  }
+
   if (crisis) {
     const cn = document.getElementById("crisisNemesis");
     if (!cn || cn.value === "") { _showGameError("Enter Team # Nemesis Defeated."); return false; }
     if (parseFloat(cn.value) < 0) { _showGameError("Team nemesis cannot be negative."); return false; }
   }
 
-  // Duplicate oversized cards
-  const ovCards = rows.map(row => {
-    const sel = row.querySelector(".oversizedCard");
-    if (!sel?.value) return { name: "", fromSet: "" };
-    const [n, f] = sel.value.split("||");
-    return { name: n || "", fromSet: f || "" };
-  }).filter(o => o.name);
-  for (let i = 0; i < ovCards.length; i++) for (let j = i + 1; j < ovCards.length; j++) {
-    if (ovCards[i].name.toLowerCase() === ovCards[j].name.toLowerCase() && ovCards[i].fromSet === ovCards[j].fromSet) {
-      _showGameError(`Duplicate oversized card: "${ovCards[i].name}" assigned to more than one player.`); return false;
+  if (!rivals) {
+    // Duplicate oversized cards
+    const ovCards = rows.map(row => {
+      const sel = row.querySelector(".oversizedCard");
+      if (!sel?.value) return { name: "", fromSet: "" };
+      const [n, f] = sel.value.split("||");
+      return { name: n || "", fromSet: f || "" };
+    }).filter(o => o.name);
+    for (let i = 0; i < ovCards.length; i++) for (let j = i + 1; j < ovCards.length; j++) {
+      if (ovCards[i].name.toLowerCase() === ovCards[j].name.toLowerCase() && ovCards[i].fromSet === ovCards[j].fromSet) {
+        _showGameError(`Duplicate oversized card: "${ovCards[i].name}" assigned to more than one player.`); return false;
+      }
     }
   }
 
@@ -714,6 +802,20 @@ function saveGame() {
     const teamNemesis = parseInt(document.getElementById("crisisNemesis").value) || 0;
     const players = rows.map(r => { const ov = getOv(r); if (ov.name) _saveOversized(ov.name, ov.fromSet); return { name: r.querySelector(".pname").value, oversizedCard: ov.name, oversizedFrom: ov.fromSet }; });
     entry = { gameNum, game: base, cross, isCrisis: true, isRivals: false, teamWon, teamNemesis, players, additional, date, dateSort: dateSortKey(date) };
+  } else if (rivals) {
+    const players = rows.map(r => ({
+      name: r.querySelector(".pname").value,
+      rivalsCharacter: r.querySelector(".rivalsCharacter")?.value || "",
+      score: 0,
+      deckCount: 0,
+      nemesis: 0,
+    }));
+    let winnerName = document.getElementById("rivalsWinnerSelect")?.value || "";
+    players.forEach(p => {
+      p.result = p.name === winnerName ? "Win" : "Loss";
+      p.place = p.name === winnerName ? 1 : 2;
+    });
+    entry = { gameNum, game: base, cross, isCrisis: false, isRivals: true, players, additional, date, dateSort: dateSortKey(date) };
   } else {
     const players = rows.map(r => {
       const ov = getOv(r); if (ov.name) _saveOversized(ov.name, ov.fromSet);

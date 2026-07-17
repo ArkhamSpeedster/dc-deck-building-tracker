@@ -43,6 +43,7 @@
 <main class="page active" id="homePage">
   <div class="home-hero card">
     <h2 class="home-title">DeckLedger</h2>
+    <p class="home-version">Beta · Version <span id="homeAppVersion">0.9.0-beta</span></p>
     <p class="home-subtitle">An unofficial companion and statistics tracker for the DC Deck-Building Game created by <a href="https://cryptozoic.com/" target="_blank" rel="noopener noreferrer">Cryptozoic Entertainment</a>.</p>
 
     <!-- Quick nav sits right under the hero tagline -->
@@ -89,7 +90,7 @@
     <h3>Getting started</h3>
     <ol style="padding-left:18px;margin-top:8px;display:flex;flex-direction:column;gap:6px;">
       <li>Go to <strong>Settings</strong>, open the collapsed sections you need, and add your player names.</li>
-      <li>Add any base games, crossovers, and oversized cards you own. Batman and Superman are included as locked defaults.</li>
+      <li>Add your players and any oversized or additional cards you want to track. Base games and expansions are maintained by DeckLedger updates.</li>
       <li>Head to <strong>Log Game</strong> and record your first session — pick a base game, crossover, date, players, and oversized cards.</li>
       <li>Check <strong>Game Stats</strong> and <strong>Game History</strong> to track performance over time.</li>
     </ol>
@@ -148,10 +149,19 @@
 
   <div class="card">
     <h3>Players</h3>
-    <p class="hint">Min 2, max 5. Each player must select an Oversized Card, Score (VPs), and # Nemesis Defeated.</p>
-    <p class="hint" id="rivalsHint" style="display:none;color:#c4b5fd;">⚔ Rivals mode active — maximum 2 players.</p>
+    <p class="hint">Min 2, max 5. Each player must select an Oversized Card, Score (VPs), and # Nemesis Defeated. Rivals uses character assignment and win/loss only.</p>
+    <p class="hint" id="rivalsHint" style="display:none;color:#c4b5fd;">Rivals mode active: exactly 2 players. Assign each player any Rivals character instead of oversized cards.</p>
     <div id="playerContainer"></div>
     <button class="primary" id="addPlayerBtn" onclick="addPlayerToGame()">+ Add Player</button>
+  </div>
+
+  <div class="card" id="rivalsResultFields" style="display:none;">
+    <h4 style="margin-top:0;">Rivals Result</h4>
+    <div id="rivalsWinnerWrap">
+      <label for="rivalsWinnerSelect">Winner:</label>
+      <select id="rivalsWinnerSelect" onchange="_markGameDirty();"></select>
+    </div>
+    <p class="hint">Choose the winning player. Rivals records win/loss only.</p>
   </div>
 
   <!-- Crisis fields -->
@@ -305,21 +315,21 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminGamesBody','adminGamesChev')">
-      <div class="collapsible-title"><h3>Base Games</h3><p>Owned base sets and Rivals flags.</p></div><span id="adminGamesChev">▶</span>
+      <div class="collapsible-title"><h3>Base Games</h3><p>Managed app list.</p></div><span id="adminGamesChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminGamesBody">
+      <p class="hint">Base games are maintained by DeckLedger updates to prevent broken game setup.</p>
       <div id="adminGames" style="margin-top:8px;"></div>
-      <button class="primary" onclick="draftAddBaseGame()">+ Add Base Game</button>
     </div>
   </div>
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminCrossBody','adminCrossChev')">
-      <div class="collapsible-title"><h3>Crossovers / Expansions</h3><p>Expansion sets and Crisis flags.</p></div><span id="adminCrossChev">▶</span>
+      <div class="collapsible-title"><h3>Crossovers / Expansions</h3><p>Managed app list.</p></div><span id="adminCrossChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminCrossBody">
+      <p class="hint">Crossovers and expansions are maintained by DeckLedger updates.</p>
       <div id="adminCrossovers" style="margin-top:8px;"></div>
-      <button class="primary" onclick="draftAddCrossover()">+ Add Crossover</button>
     </div>
   </div>
 

@@ -69,8 +69,8 @@ function _oversizedTag(name, fromSet) {
 
 function renderHistory() {
   const data = App.data;
-  document.getElementById("filterGame").innerHTML  = "<option value=''>All Games</option>"      + data.games.map(g=>`<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
-  document.getElementById("filterCross").innerHTML = "<option value=''>All Crossovers</option>" + data.crossovers.map(c=>`<option value="${_esc(c.name)}">${_esc(c.name)}</option>`).join("");
+  document.getElementById("filterGame").innerHTML  = "<option value=''>All Games</option>"      + [...data.games].sort((a, b) => naturalCompare(a.name, b.name)).map(g=>`<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
+  document.getElementById("filterCross").innerHTML = "<option value=''>All Crossovers</option>" + [...data.crossovers].sort((a, b) => (a.name === "None" ? -1 : b.name === "None" ? 1 : naturalCompare(a.name, b.name))).map(c=>`<option value="${_esc(c.name)}">${_esc(c.name)}</option>`).join("");
   document.getElementById("filterGame").value  = _filterGame;
   document.getElementById("filterCross").value = _filterCross;
   const filtered = data.history
@@ -84,11 +84,11 @@ function renderHistory() {
       const { col, dir } = _histSort;
       if (col === "num")   return dir * ((a.h.gameNum ?? a.i) - (b.h.gameNum ?? b.i));
       if (col === "date")  return dir * (dateSortKey(a.h.date) - dateSortKey(b.h.date));
-      if (col === "game")  return dir * a.h.game.localeCompare(b.h.game);
-      if (col === "cross") return dir * a.h.cross.localeCompare(b.h.cross);
+      if (col === "game")  return dir * naturalCompare(a.h.game, b.h.game);
+      if (col === "cross") return dir * naturalCompare(a.h.cross, b.h.cross);
       if (col === "type") {
         const typeOf = h => h.isCrisis ? "Crisis" : h.isRivals ? "Rivals" : "Normal";
-        return dir * typeOf(a.h).localeCompare(typeOf(b.h));
+        return dir * naturalCompare(typeOf(a.h), typeOf(b.h));
       }
       return 0;
     });
@@ -139,19 +139,22 @@ function renderHistory() {
       }).join("");
     } else {
       playerRows = h.players.map(p => {
-        const ov = (p.oversizedCard||p.heroUsed||"").trim();
+        const rivalChar = (p.rivalsCharacter || "").trim();
+        const ov = rivalChar || (p.oversizedCard||p.heroUsed||"").trim();
         const ovFrom = p.oversizedFrom || p.heroFrom || "";
-        const ovDel2 = ov ? _oversizedTag(ov, ovFrom) : "";
-        const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${_esc(ov)}${ovFrom?` <span class="hero-from">(${_esc(ovFrom)})</span>`:""}${ovDel2}</span></div>` : "";
+        const ovDel2 = ov && !rivalChar ? _oversizedTag(ov, ovFrom) : "";
+        const ovLine = ov ? `<div class="hist-ov-line"><span class="card-known-badge">${_esc(ov)}${ovFrom && !rivalChar?` <span class="hero-from">(${_esc(ovFrom)})</span>`:""}${rivalChar?` <span class="hero-from">(Rivals)</span>`:""}${ovDel2}</span></div>` : "";
         const rawResult = (p.result || "").toString();
         const resultTone = ["win", "loss", "tie"].includes(rawResult.toLowerCase()) ? rawResult.toLowerCase() : "";
         const resultClass = resultTone ? `pname-${resultTone}` : "";
         const placeExtra = p.place && p.place > 1 && p.result === "Loss"
           ? ` <span class="hist-place-label">(${_placeLabel(p.place)})</span>` : "";
+        const rivalsDetail = h.isRivals ? "—" : _esc(p.nemesis??0);
+        const scoreDetail = h.isRivals ? "—" : _esc(p.score??0);
         return `<div class="hist-player-grid-row hist-result-${resultTone}">
           <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell ${resultClass}">${_esc(p.name)}${_playerTag(p.name)}</div>${ovLine}</div>
-          <div class="hist-player-grid-cell hist-player-stat">${_esc(p.score??0)}</div>
-          <div class="hist-player-grid-cell hist-player-stat">${_esc(p.nemesis??0)}</div>
+          <div class="hist-player-grid-cell hist-player-stat">${scoreDetail}</div>
+          <div class="hist-player-grid-cell hist-player-stat">${rivalsDetail}</div>
           <div class="hist-player-grid-cell hist-player-result result-${resultTone}">${_esc(rawResult)}${placeExtra}</div>
         </div>`;
       }).join("");
@@ -257,7 +260,6 @@ function editGame(i) {
 
     document.getElementById("gameDateInput").value = toDateInputValue(h.date);
     checkCrisis();
-
     setTimeout(() => {
       document.getElementById("playerContainer").innerHTML = "";
       h.players.forEach(p => {
@@ -266,12 +268,20 @@ function editGame(i) {
           oversized:    p.oversizedCard||p.heroUsed||"",
           oversizedFrom:p.oversizedFrom||p.heroFrom||"",
           oversizedKey: p.oversizedCard ? `${p.oversizedCard}||${p.oversizedFrom||p.heroFrom||""}` : "",
+          rivalsCharacter: p.rivalsCharacter || "",
+          deckCount:    p.deckCount ?? "",
           score:        p.score  ??  "",
           nemesis:      p.nemesis ?? "",
         });
       });
       updateAllPlayerSelects();
       updateAddPlayerBtn();
+      if (h.isRivals) {
+        updateRivalsWinnerOptions();
+        const winner = h.players.find(p => p.result === "Win")?.name || "";
+        const winnerSel = document.getElementById("rivalsWinnerSelect");
+        if (winnerSel && winner) winnerSel.value = winner;
+      }
 
       document.getElementById("additionalCardsContainer").innerHTML = "";
       (h.additional||[]).forEach(c => {

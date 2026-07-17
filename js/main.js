@@ -18,6 +18,8 @@ function renderAll() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  const versionEl = document.getElementById("homeAppVersion");
+  if (versionEl) versionEl.textContent = APP_VERSION;
   initTheme();
   initAdminDraft();
   initGamePage();

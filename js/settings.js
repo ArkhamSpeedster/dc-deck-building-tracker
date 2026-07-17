@@ -179,7 +179,14 @@ function _adminStartEdit(btn, sectionKey, idx) {
 
 function _updateDraftText(sectionKey, idx, val) {
   if (sectionKey === "players")    App.adminDraft.players[idx]              = val;
-  if (sectionKey === "games")      App.adminDraft.games[idx].name           = val;
+  if (sectionKey === "games") {
+    App.adminDraft.games[idx].name = val;
+    const game = App.adminDraft.games[idx];
+    if (game.isRivals && (!game.rivalsCharacters || game.rivalsCharacters.some(c => !c))) {
+      const inferred = typeof _inferRivalsCharacters === "function" ? _inferRivalsCharacters(game.name) : [];
+      game.rivalsCharacters = [game.rivalsCharacters?.[0] || inferred[0] || "", game.rivalsCharacters?.[1] || inferred[1] || ""];
+    }
+  }
   if (sectionKey === "crossovers") App.adminDraft.crossovers[idx].name      = val;
   if (sectionKey === "cards")      App.adminDraft.knownCards[idx].name      = val;
   if (sectionKey === "cardTypes")  App.adminDraft.cardTypes[idx]            = val;
@@ -256,6 +263,11 @@ function validateAdminDraft() {
 
   for (let i = 0; i < d.games.length; i++) {
     if (!d.games[i].name.trim()) { showToast("Game names cannot be blank.", "error"); return false; }
+    if (d.games[i].isRivals) {
+      const chars = (d.games[i].rivalsCharacters || []).map(c => (c || "").trim()).filter(Boolean);
+      if (chars.length !== 2) { showToast(`Rivals game "${d.games[i].name}" needs exactly 2 playable hero cards.`, "error"); return false; }
+      if (chars[0].toLowerCase() === chars[1].toLowerCase()) { showToast(`Rivals game "${d.games[i].name}" needs 2 unique playable hero cards.`, "error"); return false; }
+    }
   }
   const gLower = d.games.map(g => g.name.trim().toLowerCase());
   for (let i = 0; i < gLower.length; i++) {
@@ -359,7 +371,7 @@ function saveAdminChanges() {
   App.data.games          = App.adminDraft.games;
   App.data.crossovers     = App.adminDraft.crossovers;
   App.data.knownCards     = App.adminDraft.knownCards;
-  App.data.cardTypes      = App.adminDraft.cardTypes.sort((a, b) => a.localeCompare(b));
+  App.data.cardTypes      = App.adminDraft.cardTypes.sort(naturalCompare);
   App.data.knownOversized = App.adminDraft.knownOversized;
 
   const newPlayers = App.data.players;
@@ -374,9 +386,6 @@ function saveAdminChanges() {
   App.data.removedOversized = (App.data.removedOversized || []).filter(r =>
     !App.data.knownOversized.some(c => _adminOversizedIdentityMatches(r, c.name, c.fromSet))
   );
-
-  App.adminDraft.games.forEach(g => restoreDeletedGame(g.name));
-  App.adminDraft.crossovers.forEach(c => restoreDeletedCrossover(c.name));
 
   saveData();
   App.adminDirty = false;
@@ -595,15 +604,11 @@ function renderAdminArchived() {
     arGames.forEach((entry, i) => {
       const row = document.createElement("div");
       row.className = "admin-row";
-      const alreadyActive = App.adminDraft.games.some(g => g.name === entry.name);
       row.innerHTML = `
         <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
-        ${entry.isRivals ? `<span class="admin-lock-badge">Rivals</span>` : ""}
+        ${entry.isRivals ? `<span class="admin-lock-badge admin-rivals-badge">Rivals</span>` : ""}
         <span class="archived-badge">archived</span>
-        ${alreadyActive
-          ? `<span style="font-size:12px;color:var(--text-dim);">Already in active list</span>`
-          : `<button class="primary" onclick="unarchiveGame(${i})">↩ Unarchive</button>`}
-        <button class="danger" onclick="_adminConfirmDeleteArchivedGame(this, ${i})">Remove</button>
+        <span style="font-size:12px;color:var(--text-dim);">Managed by DeckLedger updates</span>
       `;
       div.appendChild(row);
     });
@@ -614,15 +619,11 @@ function renderAdminArchived() {
     arCrossovers.forEach((entry, i) => {
       const row = document.createElement("div");
       row.className = "admin-row";
-      const alreadyActive = App.adminDraft.crossovers.some(c => c.name === entry.name);
       row.innerHTML = `
         <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
-        ${entry.isCrisis ? `<span class="admin-lock-badge">Crisis</span>` : ""}
+        ${entry.isCrisis ? `<span class="admin-lock-badge admin-crisis-badge">Crisis</span>` : ""}
         <span class="archived-badge">archived</span>
-        ${alreadyActive
-          ? `<span style="font-size:12px;color:var(--text-dim);">Already in active list</span>`
-          : `<button class="primary" onclick="unarchiveCrossover(${i})">↩ Unarchive</button>`}
-        <button class="danger" onclick="_adminConfirmDeleteArchivedCrossover(this, ${i})">Remove</button>
+        <span style="font-size:12px;color:var(--text-dim);">Managed by DeckLedger updates</span>
       `;
       div.appendChild(row);
     });
@@ -682,38 +683,23 @@ function unarchivePlayer(i) {
 function renderAdminGames() {
   const gDiv = document.getElementById("adminGames");
   gDiv.innerHTML = "";
-  App.adminDraft.games.forEach((g, i) => {
-    const locked = g.name === "Original Core Set (2012)";
+  [...App.adminDraft.games]
+    .sort((a, b) => (a.name === "Original Core Set (2012)" ? -1 : b.name === "Original Core Set (2012)" ? 1 : naturalCompare(a.name, b.name)))
+    .forEach((g, i) => {
+    const rivalsChars = g.rivalsCharacters || ["", ""];
     const row = document.createElement("div");
     row.className = "admin-row";
-    if (locked) {
-      row.innerHTML = `<span class="admin-locked">Original Core Set (2012)</span><span class="admin-lock-badge">🔒 Default</span>`;
-    } else {
-      row.innerHTML = `
-        <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
-        <span class="admin-static">${_ae(g.name)}</span>
-        <button onclick="draftMoveGame(${i},-1)" title="Up">↑</button>
-        <button onclick="draftMoveGame(${i}, 1)" title="Down">↓</button>
-        <label class="crisis-inline-label">
-          <input type="checkbox" ${g.isRivals?"checked":""} disabled onchange="draftUpdateGameRivals(${i},this.checked)"> Rivals
-        </label>
-        <button class="secondary" onclick="_adminStartEdit(this,'games',${i})">Edit</button>
-        <button class="danger" onclick="_adminConfirmRemoveGame(this, ${i})">Archive</button>
-        <button class="danger" onclick="_adminConfirmDeleteGame(this, ${i})">Remove</button>
-      `;
-    }
-    gDiv.appendChild(row);
-  });
-}
-
-function _adminConfirmRemoveGame(btn, i) {
-  if (App.adminDraft.games[i]?.name === "Original Core Set (2012)") { showToast("Cannot remove the default base game.", "error"); return; }
-  _inlineConfirm(btn, `Archive "${App.adminDraft.games[i]?.name}"?`, () => draftRemoveGame(i));
-}
-
-function _adminConfirmDeleteGame(btn, i) {
-  if (App.adminDraft.games[i]?.name === "Original Core Set (2012)") { showToast("Cannot remove the default base game.", "error"); return; }
-  _inlineConfirm(btn, `Remove "${App.adminDraft.games[i]?.name}" entirely? History stays unchanged.`, () => draftDeleteGame(i));
+    row.innerHTML = `
+      <span class="admin-static">${_ae(g.name)}</span>
+      ${g.isRivals ? `<span class="admin-lock-badge admin-rivals-badge">Rivals</span>` : ""}
+      ${g.isRivals ? `
+        <span class="hero-tag">${_ae(rivalsChars[0] || "Hero 1")}</span>
+        <span class="hero-tag">${_ae(rivalsChars[1] || "Hero 2")}</span>
+      ` : ""}
+      <span style="font-size:12px;color:var(--text-dim);margin-left:auto;">Managed</span>
+    `;
+      gDiv.appendChild(row);
+    });
 }
 
 function _adminConfirmDeleteArchivedPlayer(btn, i) {
@@ -726,137 +712,22 @@ function _adminConfirmDeleteArchivedPlayer(btn, i) {
   });
 }
 
-function _adminConfirmDeleteArchivedGame(btn, i) {
-  const entry = App.data.archivedGames?.[i];
-  if (entry?.name === "Original Core Set (2012)") { showToast("Cannot remove the default base game.", "error"); return; }
-  _inlineConfirm(btn, `Remove "${entry?.name || "this base game"}" entirely? History stays unchanged.`, () => {
-    App.data.archivedGames.splice(i, 1);
-    saveData();
-    renderAdminArchived();
-  });
-}
-
-function draftAddBaseGame() {
-  App.adminDraft.games.push({ name: "", isRivals: false });
-  markAdminDirty(); renderAdminGames();
-  _autoEditLastRow("adminGames");
-}
-
-function draftUpdateGameName(i, v)    { App.adminDraft.games[i].name     = v.trim(); markAdminDirty(); }
-function draftUpdateGameRivals(i, v)  { App.adminDraft.games[i].isRivals = v;        markAdminDirty(); }
-
-function draftMoveGame(i, dir) {
-  const a = App.adminDraft.games, j = i + dir;
-  if (j <= 0 || j >= a.length) return;
-  [a[i], a[j]] = [a[j], a[i]]; markAdminDirty(); renderAdminGames();
-}
-
-function draftRemoveGame(i) {
-  if (App.adminDraft.games[i]?.name === "Original Core Set (2012)") { showToast("Cannot remove the default base game.", "error"); return; }
-  const g = App.adminDraft.games[i];
-  if (g && g.name) {
-    App.data.archivedGames = App.data.archivedGames || [];
-    if (!App.data.archivedGames.some(a => a.name === g.name)) {
-      App.data.archivedGames.push({ name: g.name, isRivals: g.isRivals || false });
-      saveData();
-    }
-  }
-  App.adminDraft.games.splice(i, 1); markAdminDirty(); renderAdminGames(); renderAdminArchived();
-}
-
-function draftDeleteGame(i) {
-  if (App.adminDraft.games[i]?.name === "Original Core Set (2012)") { showToast("Cannot remove the default base game.", "error"); return; }
-  const g = App.adminDraft.games[i];
-  if (!g) return;
-  App.adminDraft.games.splice(i, 1);
-  App.data.archivedGames = (App.data.archivedGames || []).filter(a => a.name !== g.name);
-  markAdminDirty(); renderAdminGames(); renderAdminArchived();
-}
-
 /* ===== Crossovers ===== */
 function renderAdminCrossovers() {
   const cDiv = document.getElementById("adminCrossovers");
   cDiv.innerHTML = "";
-  App.adminDraft.crossovers.forEach((c, i) => {
-    const locked = c.name === "None";
+  [...App.adminDraft.crossovers]
+    .sort((a, b) => (a.name === "None" ? -1 : b.name === "None" ? 1 : naturalCompare(a.name, b.name)))
+    .forEach((c, i) => {
     const row = document.createElement("div");
     row.className = "admin-row";
-    if (locked) {
-      row.innerHTML = `<span class="admin-locked">None</span><span class="admin-lock-badge">🔒 Default</span>`;
-    } else {
-      row.innerHTML = `
-        <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
-        <span class="admin-static">${_ae(c.name)}</span>
-        <button onclick="draftMoveCrossover(${i},-1)" title="Up">↑</button>
-        <button onclick="draftMoveCrossover(${i}, 1)" title="Down">↓</button>
-        <label class="crisis-inline-label">
-          <input type="checkbox" ${c.isCrisis?"checked":""} disabled onchange="draftUpdateCrisisCross(${i},this.checked);">
-          Crisis
-        </label>
-        <button class="secondary" onclick="_adminStartEdit(this,'crossovers',${i})">Edit</button>
-        <button class="danger" onclick="_adminConfirmRemoveCrossover(this, ${i})">Archive</button>
-        <button class="danger" onclick="_adminConfirmDeleteCrossover(this, ${i})">Remove</button>
-      `;
-    }
-    cDiv.appendChild(row);
-  });
-}
-
-function _adminConfirmRemoveCrossover(btn, i) {
-  if (App.adminDraft.crossovers[i]?.name === "None") { showToast("Cannot remove None.", "error"); return; }
-  _inlineConfirm(btn, `Archive "${App.adminDraft.crossovers[i]?.name}"?`, () => draftRemoveCrossover(i));
-}
-
-function _adminConfirmDeleteCrossover(btn, i) {
-  if (App.adminDraft.crossovers[i]?.name === "None") { showToast("Cannot remove None.", "error"); return; }
-  _inlineConfirm(btn, `Remove "${App.adminDraft.crossovers[i]?.name}" entirely? History stays unchanged.`, () => draftDeleteCrossover(i));
-}
-
-function _adminConfirmDeleteArchivedCrossover(btn, i) {
-  const entry = App.data.archivedCrossovers?.[i];
-  if (entry?.name === "None") { showToast("Cannot remove None.", "error"); return; }
-  _inlineConfirm(btn, `Remove "${entry?.name || "this crossover"}" entirely? History stays unchanged.`, () => {
-    App.data.archivedCrossovers.splice(i, 1);
-    saveData();
-    renderAdminArchived();
-  });
-}
-
-function draftAddCrossover() {
-  App.adminDraft.crossovers.push({ name: "", isCrisis: false });
-  markAdminDirty(); renderAdminCrossovers();
-  _autoEditLastRow("adminCrossovers");
-}
-
-function draftUpdateCrossoverName(i, v) { App.adminDraft.crossovers[i].name     = v.trim(); markAdminDirty(); }
-function draftUpdateCrisisCross(i, v)   { App.adminDraft.crossovers[i].isCrisis = v;        markAdminDirty(); }
-
-function draftMoveCrossover(i, dir) {
-  const a = App.adminDraft.crossovers, j = i + dir;
-  if (j <= 0 || j >= a.length) return;
-  [a[i], a[j]] = [a[j], a[i]]; markAdminDirty(); renderAdminCrossovers();
-}
-
-function draftRemoveCrossover(i) {
-  if (App.adminDraft.crossovers[i]?.name === "None") { showToast("Cannot remove None.", "error"); return; }
-  const c = App.adminDraft.crossovers[i];
-  if (c && c.name) {
-    App.data.archivedCrossovers = App.data.archivedCrossovers || [];
-    if (!App.data.archivedCrossovers.some(a => a.name === c.name)) {
-      App.data.archivedCrossovers.push({ name: c.name, isCrisis: c.isCrisis || false });
-      saveData();
-    }
-  }
-  App.adminDraft.crossovers.splice(i, 1); markAdminDirty(); renderAdminCrossovers(); renderAdminArchived();
-}
-
-function draftDeleteCrossover(i) {
-  if (App.adminDraft.crossovers[i]?.name === "None") { showToast("Cannot remove None.", "error"); return; }
-  const c = App.adminDraft.crossovers[i];
-  if (!c) return;
-  App.adminDraft.crossovers.splice(i, 1);
-  App.data.archivedCrossovers = (App.data.archivedCrossovers || []).filter(a => a.name !== c.name);
-  markAdminDirty(); renderAdminCrossovers(); renderAdminArchived();
+    row.innerHTML = `
+      <span class="admin-static">${_ae(c.name)}</span>
+      ${c.isCrisis ? `<span class="admin-lock-badge admin-crisis-badge">Crisis</span>` : ""}
+      <span style="font-size:12px;color:var(--text-dim);margin-left:auto;">Managed</span>
+    `;
+      cDiv.appendChild(row);
+    });
 }
 
 /* ===== Known Additional Cards ===== */
@@ -976,7 +847,7 @@ function renderAdminKnownCards() {
     ].join("");
     const cardTypeOptions = [
       !c.cardType ? `<option value="" disabled selected class="placeholder-opt">— Choose Card Type —</option>` : "",
-      ...[...(App.adminDraft.cardTypes || [])].sort((a, b) => a.localeCompare(b)).map(t => `<option value="${_ae(t)}" ${t === c.cardType ? "selected" : ""}>${_ae(t)}</option>`)
+      ...[...(App.adminDraft.cardTypes || [])].sort(naturalCompare).map(t => `<option value="${_ae(t)}" ${t === c.cardType ? "selected" : ""}>${_ae(t)}</option>`)
     ].join("");
     row.innerHTML = `
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
@@ -1132,7 +1003,7 @@ function _adminAllSets() {
     ...App.adminDraft.games.map(g => g.name).filter(Boolean),
     ...App.adminDraft.crossovers.filter(c => c.name && c.name !== "None").map(c => c.name),
     "Promo",
-  ].sort((a, b) => a.localeCompare(b));
+  ].sort(naturalCompare);
   return [...named, "Other"];
 }
 
@@ -1355,26 +1226,6 @@ function _adminConfirmDeleteBannedOversized(btn, i) {
     App.data.bannedOversized.splice(i, 1);
     saveData(); renderAdminBannedCards();
   });
-}
-
-function unarchiveGame(i) {
-  const entry = App.data.archivedGames[i];
-  if (!entry) return;
-  if (App.adminDraft.games.some(g => g.name === entry.name)) { showToast(`"${entry.name}" is already active.`, "error"); return; }
-  App.data.archivedGames.splice(i, 1);
-  saveData();
-  App.adminDraft.games.push({ name: entry.name, isRivals: entry.isRivals || false });
-  markAdminDirty(); renderAdminGames(); renderAdminArchived();
-}
-
-function unarchiveCrossover(i) {
-  const entry = App.data.archivedCrossovers[i];
-  if (!entry) return;
-  if (App.adminDraft.crossovers.some(c => c.name === entry.name)) { showToast(`"${entry.name}" is already active.`, "error"); return; }
-  App.data.archivedCrossovers.splice(i, 1);
-  saveData();
-  App.adminDraft.crossovers.push({ name: entry.name, isCrisis: entry.isCrisis || false });
-  markAdminDirty(); renderAdminCrossovers(); renderAdminArchived();
 }
 
 function unarchiveCard(i) {
