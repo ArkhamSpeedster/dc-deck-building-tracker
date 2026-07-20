@@ -207,7 +207,7 @@ const DEFAULT_GAMES = [
   { name: "Forever Evil (2014)" },
   { name: "Rivals 1: Batman vs Joker (2014)", isRivals: true, rivalsCharacters: ["Batman", "Joker"] },
   { name: "Teen Titans (2015)" },
-  { name: "Confrontations (2017)" },
+  { name: "Confrontations (2017)", comingSoon: true },
   { name: "Dark Nights: Metal (2018)" },
   { name: "Rivals 2: Green Lantern vs Sinestro (2018)", isRivals: true, rivalsCharacters: ["Green Lantern", "Sinestro"] },
   { name: "Injustice (2023)" },

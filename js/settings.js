@@ -709,7 +709,7 @@ function renderAdminGames() {
     row.innerHTML = `
       <span class="admin-static">${_ae(g.name)}</span>
       ${g.isRivals ? `<span class="admin-lock-badge admin-rivals-badge">Rivals</span>` : ""}
-      ${g.comingSoon ? `<span class="admin-lock-badge">${g.name === "Rebirth (2019)" ? "App Update Coming Soon" : "Coming Soon"}</span>` : ""}
+      ${g.comingSoon ? `<span class="admin-lock-badge">${g.name === "Rebirth (2019)" || g.name === "Confrontations (2017)" ? "App Update Coming Soon" : "Coming Soon"}</span>` : ""}
       <span style="font-size:12px;color:var(--text-dim);margin-left:auto;">Managed</span>
     `;
       gDiv.appendChild(row);
