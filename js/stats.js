@@ -4,6 +4,8 @@
 
 let chartPlayerInstance = null;
 let chartGameInstance   = null;
+let chartTopOversizedInstance = null;
+let chartTopAdditionalInstance = null;
 let _compareWarningMsg  = "";
 
 /* ===== Sort state for game stats tables ===== */
@@ -71,8 +73,8 @@ function calcPlayerStats(playerName) {
   let wins=0,losses=0,ties=0,totalScore=0,totalNemesis=0,normalGames=0;
   let rivalsGames=0,rivalsWins=0,rivalsLosses=0,rivalsTies=0;
   let crisisPlayed=0,crisisWins=0,crisisLosses=0;
+  let multiverseGames=0,multiverseWins=0,multiverseLosses=0,multiverseTies=0,multiverseVpGames=0,multiverseScoreTotal=0;
   const oversizedCount = {};
-  const placements = {}; // {2:n, 3:n, 4:n, 5:n}
 
   App.data.history.forEach(h => {
     h.players.forEach(p => {
@@ -85,12 +87,21 @@ function calcPlayerStats(playerName) {
         if      (p.result==="Win")  rivalsWins++;
         else if (p.result==="Loss") rivalsLosses++;
         else if (p.result==="Tie")  rivalsTies++;
+      } else if (h.isMultiverse) {
+        multiverseGames++;
+        if      (p.result==="Win")  multiverseWins++;
+        else if (p.result==="Loss") multiverseLosses++;
+        else if (p.result==="Tie")  multiverseTies++;
+        if (h.multiverseWinCondition === "brainiac" || h.multiverseWinCondition === "deimos") {
+          multiverseVpGames++;
+          multiverseScoreTotal += p.score || 0;
+        }
       } else {
         normalGames++;
         totalScore   += p.score   || 0;
         totalNemesis += p.nemesis || 0;
         if      (p.result==="Win")  wins++;
-        else if (p.result==="Loss") { losses++; if (p.place && p.place>1) placements[p.place]=(placements[p.place]||0)+1; }
+        else if (p.result==="Loss") losses++;
         else if (p.result==="Tie")  ties++;
       }
       const card = (p.oversizedCard||p.heroUsed||"").trim();
@@ -100,20 +111,21 @@ function calcPlayerStats(playerName) {
 
   return {wins,losses,ties,totalScore,totalNemesis,normalGames,
           rivalsGames,rivalsWins,rivalsLosses,rivalsTies,
-          crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements};
+          crisisPlayed,crisisWins,crisisLosses,
+          multiverseGames,multiverseWins,multiverseLosses,multiverseTies,multiverseVpGames,multiverseScoreTotal,
+          oversizedCount};
 }
 
 function buildPlayerSummaryHTML(stats) {
   const {wins,losses,ties,totalScore,totalNemesis,normalGames,
          rivalsGames,rivalsWins,rivalsLosses,rivalsTies,
-         crisisPlayed,crisisWins,crisisLosses,oversizedCount,placements} = stats;
-  const totalAll   = normalGames+rivalsGames+crisisPlayed;
+         crisisPlayed,crisisWins,crisisLosses,
+         multiverseGames,multiverseWins,multiverseLosses,multiverseTies,multiverseVpGames,multiverseScoreTotal,
+         oversizedCount} = stats;
+  const totalAll   = normalGames+rivalsGames+crisisPlayed+multiverseGames;
   const avgScore   = normalGames>0 ? (totalScore/normalGames).toFixed(1) : "—";
   const avgNemesis = normalGames>0 ? (totalNemesis/normalGames).toFixed(1) : "—";
   const topCards   = Object.entries(oversizedCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-  const placementHtml = Object.entries(placements).sort((a,b)=>a[0]-b[0])
-    .map(([pl,cnt]) => `<span class="hero-tag">${_placeLabel(+pl)}: ${cnt}</span>`).join(" ");
 
   return `
     <h4 class="stats-section-label">Normal Games</h4>
@@ -127,8 +139,7 @@ function buildPlayerSummaryHTML(stats) {
       ${statCard(totalNemesis,"Total Nemesis Defeated")}
       ${statCard(avgNemesis,"Avg Nemesis Defeated")}
     </div>
-    ${placementHtml ? `<div style="margin-top:10px;"><strong style="font-size:13px;">Placements (Loss):</strong> ${placementHtml}</div>` : ""}
-    <h4 class="stats-section-label" style="margin-top:16px;">Rivals Games <span class="badge-rivals" style="vertical-align:middle;">1v1</span></h4>
+    <h4 class="stats-section-label" style="margin-top:16px;">Rivals Games</h4>
     <div class="stats-grid">
       ${statCard(rivalsGames,"Played")}
       ${statCard(rivalsWins,"Wins","#22c55e")}
@@ -141,17 +152,20 @@ function buildPlayerSummaryHTML(stats) {
       ${statCard(crisisWins,"Wins","#22c55e")}
       ${statCard(crisisLosses,"Losses","#ef4444")}
     </div>
+    <h4 class="stats-section-label" style="margin-top:16px;">Multiverse Games</h4>
+    <div class="stats-grid">
+      ${statCard(multiverseGames,"Played")}
+      ${statCard(multiverseWins,"Wins","#22c55e")}
+      ${statCard(multiverseLosses,"Losses","#ef4444")}
+      ${statCard(multiverseTies,"Ties","#facc15")}
+      ${statCard(multiverseVpGames ? (multiverseScoreTotal / multiverseVpGames).toFixed(1) : "—","Avg VP End Score")}
+    </div>
     ${topCards.length ? `
     <div style="margin-top:14px;">
       <strong style="font-size:13px;">Most Used Oversized Cards:</strong><br>
       <div style="margin-top:6px;">${topCards.map(([c,n])=>`<span class="hero-tag">${_esc(c)} <span style="opacity:.6;">(${_esc(n)})</span></span>`).join(" ")}</div>
     </div>` : ""}
   `;
-}
-
-function _placeLabel(n) {
-  if (n===2) return "2nd"; if (n===3) return "3rd";
-  return `${n}th`;
 }
 
 /* ===== Chart color helper (reads CSS vars at render time) ===== */
@@ -165,16 +179,27 @@ function _chartColors() {
   };
 }
 
-function _smallChartOpts(cc, hasLegend) {
+function _chartPalette(count) {
+  const palette = [
+    "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ef4444",
+    "#06b6d4", "#84cc16", "#f97316", "#ec4899", "#14b8a6",
+  ];
+  return Array.from({ length: count }, (_, i) => palette[i % palette.length]);
+}
+
+function _smallChartOpts(cc, hasLegend, horizontal = false) {
+  const valueAxis = horizontal ? "x" : "y";
+  const labelAxis = horizontal ? "y" : "x";
   return {
     responsive: true,
     maintainAspectRatio: true,
+    indexAxis: horizontal ? "y" : "x",
     plugins:{
       legend:{ display:!!hasLegend, labels:{ color:cc.legend, font:{size:11}, boxWidth:12, padding:10 } },
     },
     scales:{
-      y:{ beginAtZero:true, ticks:{stepSize:1, color:cc.tick, font:{size:10}}, grid:{color:cc.grid} },
-      x:{ ticks:{color:cc.tick, font:{size:10}}, grid:{display:false} },
+      [valueAxis]:{ beginAtZero:true, ticks:{stepSize:1, color:cc.tick, font:{size:10}}, grid:{color:cc.grid} },
+      [labelAxis]:{ ticks:{color:cc.tick, font:{size:10}}, grid:{display:false} },
     },
   };
 }
@@ -257,9 +282,9 @@ function renderPlayerStats() {
     _clearChartUnavailable("statsChart");
     chartPlayerInstance = new Chart(document.getElementById("statsChart"), {
       type:"bar",
-      data:{ labels:["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L"],
-        datasets:[{ data:[stats.wins,stats.losses,stats.ties,stats.rivalsWins,stats.rivalsLosses,stats.crisisWins,stats.crisisLosses],
-          backgroundColor:["#22c55e","#ef4444","#facc15","#a78bfa","#c084fc","#34d399","#f87171"], borderRadius:4 }] },
+      data:{ labels:["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L","Multi W","Multi L"],
+        datasets:[{ data:[stats.wins,stats.losses,stats.ties,stats.rivalsWins,stats.rivalsLosses,stats.crisisWins,stats.crisisLosses,stats.multiverseWins,stats.multiverseLosses],
+          backgroundColor:["#22c55e","#ef4444","#facc15","#a78bfa","#c084fc","#34d399","#f87171","#10b981","#fb7185"], borderRadius:4 }] },
       options:_smallChartOpts(cc, false),
     });
   }
@@ -281,7 +306,7 @@ function handleComparePlayerChange(input) {
 }
 
 function _renderCompare(players, cc) {
-  const labels = ["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L"];
+  const labels = ["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L","Multi W","Multi L"];
   const colors = ["#3b82f6", "#f59e0b", "#22c55e", "#a855f7", "#ef4444"];
   const stats = players.map(p => ({ name: p, stats: calcPlayerStats(p) }));
 
@@ -296,7 +321,7 @@ function _renderCompare(players, cc) {
     data:{ labels,
       datasets:stats.map((entry, i) => ({
         label:entry.name,
-        data:[entry.stats.wins,entry.stats.losses,entry.stats.ties,entry.stats.rivalsWins,entry.stats.rivalsLosses,entry.stats.crisisWins,entry.stats.crisisLosses],
+        data:[entry.stats.wins,entry.stats.losses,entry.stats.ties,entry.stats.rivalsWins,entry.stats.rivalsLosses,entry.stats.crisisWins,entry.stats.crisisLosses,entry.stats.multiverseWins,entry.stats.multiverseLosses],
         backgroundColor:colors[i % colors.length],
         borderRadius:3,
       }))},
@@ -323,7 +348,7 @@ function _topOversized(stats) {
 
 function _buildCompareTable(entries, colors) {
   const rows = [
-    ["Total Games", s => s.normalGames + s.rivalsGames + s.crisisPlayed],
+    ["Total Games", s => s.normalGames + s.rivalsGames + s.crisisPlayed + s.multiverseGames],
     ["Normal", s => s.normalGames],
     ["Normal W-L-T", s => _wlSummary(s.wins, s.losses, s.ties)],
     ["Normal Win %", s => _pct(s.wins, s.normalGames)],
@@ -335,6 +360,9 @@ function _buildCompareTable(entries, colors) {
     ["Crisis", s => s.crisisPlayed],
     ["Crisis W-L", s => `${s.crisisWins}-${s.crisisLosses}`],
     ["Crisis Win %", s => _pct(s.crisisWins, s.crisisPlayed)],
+    ["Multiverse", s => s.multiverseGames],
+    ["Multiverse W-L-T", s => _wlSummary(s.multiverseWins, s.multiverseLosses, s.multiverseTies)],
+    ["Multiverse Win %", s => _pct(s.multiverseWins, s.multiverseGames)],
     ["Top Oversized", s => _topOversized(s)],
   ];
 
@@ -383,7 +411,7 @@ function renderGameStats() {
     } else if (h.isRivals) {
       if (!rivalsMap[h.game]) rivalsMap[h.game] = {played:0};
       rivalsMap[h.game].played++;
-    } else {
+    } else if (!h.isMultiverse) {
       if (!gameMap[h.game]) gameMap[h.game] = {normal:0};
       gameMap[h.game].normal++;
       if (h.cross !== "None") {
@@ -397,6 +425,8 @@ function renderGameStats() {
   // Tally card usage across all history
   const oversizedUsage = {};
   const additionalUsage = {};
+  const multiverseLocationUsage = {};
+  const multiverseChampionUsage = {};
   data.history.forEach(h => {
     h.players.forEach(p => {
       const card    = (p.oversizedCard || p.heroUsed  || "").trim();
@@ -406,8 +436,23 @@ function renderGameStats() {
         if (!oversizedUsage[key]) oversizedUsage[key] = { name: card, fromSet, count: 0 };
         oversizedUsage[key].count++;
       }
+      if (h.isMultiverse && p.multiverseLocation) {
+        const locKey = p.multiverseLocation;
+        if (!multiverseLocationUsage[locKey]) multiverseLocationUsage[locKey] = { name: locKey, count: 0 };
+        multiverseLocationUsage[locKey].count++;
+      }
+      if (h.isMultiverse) {
+        (p.multiverseChampions || []).forEach(ch => {
+          const chName = (ch.name || "").trim();
+          if (!chName) return;
+          const chKey = chName;
+          if (!multiverseChampionUsage[chKey]) multiverseChampionUsage[chKey] = { name: chName, fromSet: ch.fromSet || ch.set || "", count: 0 };
+          multiverseChampionUsage[chKey].count++;
+        });
+      }
     });
     (h.additional || []).forEach(c => {
+      if (isMultiverseLocationCard(c)) return;
       const name = (typeof c === "string" ? c : c.name || "").trim();
       const set = (typeof c === "string" ? "Other" : c.set || c.type || "Other").trim() || "Other";
       const cardType = (typeof c === "string" ? "Hero" : c.cardType || "Hero").trim() || "Hero";
@@ -419,9 +464,13 @@ function renderGameStats() {
     });
   });
 
-  const tN  = data.history.filter(h=>!h.isCrisis&&!h.isRivals).length;
+  const tN  = data.history.filter(h=>!h.isCrisis&&!h.isRivals&&!h.isMultiverse).length;
   const tR  = data.history.filter(h=> h.isRivals).length;
   const tC  = data.history.filter(h=> h.isCrisis).length;
+  const tM  = data.history.filter(h=> h.isMultiverse).length;
+  const tML = data.history.filter(h=> h.isMultiverse && h.multiverseWinCondition === "lastPlayerStanding").length;
+  const tMB = data.history.filter(h=> h.isMultiverse && h.multiverseWinCondition === "brainiac").length;
+  const tMD = data.history.filter(h=> h.isMultiverse && h.multiverseWinCondition === "deimos").length;
   const tCW = data.history.filter(h=>h.isCrisis&& h.teamWon).length;
   const tCL = data.history.filter(h=>h.isCrisis&&!h.teamWon).length;
   const gE  = Object.entries(gameMap).filter(([,s]) => s.normal > 0);
@@ -430,6 +479,8 @@ function renderGameStats() {
   const crE = Object.entries(crisisMap).filter(([,s]) => s.crisis > 0);
   const ovArr = Object.values(oversizedUsage);
   const addArr = Object.values(additionalUsage);
+  const mvLocArr = Object.values(multiverseLocationUsage);
+  const mvChampArr = Object.values(multiverseChampionUsage);
 
   // Sort: By Base Game
   const sortedGE = [...gE].sort((a, b) => {
@@ -463,6 +514,8 @@ function renderGameStats() {
   // Top 10 oversized cards: fixed sort by most-used first
   const sortedOv = [...ovArr].sort((a, b) => b.count - a.count).slice(0, 10);
   const sortedAdd = [...addArr].sort((a, b) => b.count - a.count).slice(0, 10);
+  const sortedMvLoc = [...mvLocArr].sort((a, b) => b.count - a.count).slice(0, 10);
+  const sortedMvChamp = [...mvChampArr].sort((a, b) => b.count - a.count).slice(0, 10);
 
   // Shared heading + table styles for consistent spacing
   const sectionHead = (title, sub) =>
@@ -475,9 +528,18 @@ function renderGameStats() {
       ${statCard(tN,"Normal Games")}
       ${statCard(tR,"Rivals Games")}
       ${statCard(tC,"Crisis Games")}
+      ${statCard(tM,"Multiverse Games")}
       ${statCard(tCW,"Crisis Wins","#22c55e")}
       ${statCard(tCL,"Crisis Losses","#ef4444")}
     </div>
+
+    ${tM ? `
+    ${sectionHead("Multiverse Endings")}
+    <div class="stats-grid">
+      ${statCard(tML,"Last Player Standing")}
+      ${statCard(tMB,"Brainiac VP Endings")}
+      ${statCard(tMD,"Deimos VP Endings")}
+    </div>` : ""}
 
     ${gE.length ? `
     ${sectionHead("By Base Game")}
@@ -543,6 +605,7 @@ function renderGameStats() {
 
     ${ovArr.length ? `
     ${sectionHead("Top 10 Most Used Oversized Cards")}
+    <div class="stats-chart-wrap"><canvas id="topOversizedChart" style="max-height:260px;"></canvas></div>
     <table class="stats-table">
       <thead><tr>
         <th style="color:var(--text-dim);font-size:11px;width:32px;">#</th>
@@ -560,6 +623,7 @@ function renderGameStats() {
 
     ${addArr.length ? `
     ${sectionHead("Top 10 Most Used Additional Cards")}
+    <div class="stats-chart-wrap"><canvas id="topAdditionalChart" style="max-height:260px;"></canvas></div>
     <table class="stats-table">
       <thead><tr>
         <th style="color:var(--text-dim);font-size:11px;width:32px;">#</th>
@@ -576,18 +640,72 @@ function renderGameStats() {
         <td style="font-weight:600;">${_esc(c.count)}</td>
       </tr>`).join("")}</tbody>
     </table>` : ""}
+
+    ${mvLocArr.length ? `
+    ${sectionHead("Top 10 Multiverse Locations")}
+    <table class="stats-table">
+      <thead><tr><th>#</th><th>Location</th><th>Times Used</th></tr></thead>
+      <tbody>${sortedMvLoc.map((c, idx)=>`<tr><td>${idx+1}</td><td>${_esc(c.name)}</td><td style="font-weight:600;">${_esc(c.count)}</td></tr>`).join("")}</tbody>
+    </table>` : ""}
+
+    ${mvChampArr.length ? `
+    ${sectionHead("Top 10 Multiverse Champions")}
+    <table class="stats-table">
+      <thead><tr><th>#</th><th>Champion</th><th>From Set</th><th>Times Used</th></tr></thead>
+      <tbody>${sortedMvChamp.map((c, idx)=>`<tr><td>${idx+1}</td><td>${_esc(c.name)}</td><td>${_esc(c.fromSet || "—")}</td><td style="font-weight:600;">${_esc(c.count)}</td></tr>`).join("")}</tbody>
+    </table>` : ""}
   `;
 
   _destroyChart(chartGameInstance); chartGameInstance=null;
+  _destroyChart(chartTopOversizedInstance); chartTopOversizedInstance=null;
+  _destroyChart(chartTopAdditionalInstance); chartTopAdditionalInstance=null;
+  if (!_chartsAvailable()) {
+    if (gE.length) _showChartUnavailable("gameStatsChart");
+    if (sortedOv.length) _showChartUnavailable("topOversizedChart");
+    if (sortedAdd.length) _showChartUnavailable("topAdditionalChart");
+    return;
+  }
   if (gE.length) {
-    if (!_chartsAvailable()) { _showChartUnavailable("gameStatsChart"); return; }
     _clearChartUnavailable("gameStatsChart");
     const cc2 = _chartColors();
     chartGameInstance = new Chart(document.getElementById("gameStatsChart"), {
       type:"bar",
       data:{ labels:gE.map(([n])=>n),
-        datasets:[{ label:"Normal Games", data:gE.map(([,s])=>s.normal), backgroundColor:"#3b82f6", borderRadius:3 }] },
+        datasets:[{ label:"Normal Games", data:gE.map(([,s])=>s.normal), backgroundColor:_chartPalette(gE.length), borderRadius:3 }] },
       options:_smallChartOpts(cc2, true),
+    });
+  }
+  const cc2 = _chartColors();
+  if (sortedOv.length) {
+    _clearChartUnavailable("topOversizedChart");
+    chartTopOversizedInstance = new Chart(document.getElementById("topOversizedChart"), {
+      type:"bar",
+      data:{
+        labels:sortedOv.map(o => o.fromSet ? `${o.name} (${o.fromSet})` : o.name),
+        datasets:[{
+          label:"Times Used",
+          data:sortedOv.map(o => o.count),
+          backgroundColor:_chartPalette(sortedOv.length),
+          borderRadius:3,
+        }],
+      },
+      options:_smallChartOpts(cc2, false, true),
+    });
+  }
+  if (sortedAdd.length) {
+    _clearChartUnavailable("topAdditionalChart");
+    chartTopAdditionalInstance = new Chart(document.getElementById("topAdditionalChart"), {
+      type:"bar",
+      data:{
+        labels:sortedAdd.map(c => `${c.name} (${c.set || "Other"})`),
+        datasets:[{
+          label:"Times Used",
+          data:sortedAdd.map(c => c.count),
+          backgroundColor:_chartPalette(sortedAdd.length),
+          borderRadius:3,
+        }],
+      },
+      options:_smallChartOpts(cc2, false, true),
     });
   }
 }
@@ -603,7 +721,7 @@ function renderArchivedStats() {
   container.innerHTML = archived.map(entry => {
     const name = typeof entry==="string"?entry:entry.name;
     const s = calcPlayerStats(name);
-    const total = s.normalGames+s.crisisPlayed;
+    const total = s.normalGames + s.rivalsGames + s.crisisPlayed + s.multiverseGames;
     if (!total) return `<div class="card" style="margin:8px 0;"><strong>${_esc(name)}</strong> <span style="color:var(--text-dim);font-size:13px;">(no recorded games)</span></div>`;
     return `<details class="archived-player-details">
       <summary><strong>${_esc(name)}</strong> <span class="archived-badge">archived</span> — ${_esc(total)} game${total!==1?"s":""}</summary>

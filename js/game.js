@@ -3,6 +3,8 @@
  */
 
 const CARD_TYPES = ["Promo", "Other"];
+const MULTIVERSE_GAME_NAME = "Multiverse";
+const WORLD_HOPPER_GAME_NAME = "Multiverse (World Hopper)";
 let _gameIsDirty = false;
 let _editingEntry = null;
 const RIVALS_CHARACTER_SETS = [
@@ -66,13 +68,235 @@ function updateRivalsHint() {
   updateRivalsWinnerOptions();
 }
 
+/* ===== Multiverse helpers ===== */
+function isMultiverseMode() {
+  const value = document.getElementById("baseGameSelect")?.value || "";
+  return value === MULTIVERSE_GAME_NAME || value === WORLD_HOPPER_GAME_NAME;
+}
+
+function activeMultiverseMode() {
+  return isMultiverseMode() && !isRivalsMode() && !isCrisisMode();
+}
+
+function multiverseNeedsVP() {
+  const value = document.getElementById("multiverseWinCondition")?.value || "lastPlayerStanding";
+  return value === "brainiac" || value === "deimos";
+}
+
+function multiverseStyle() {
+  return document.getElementById("baseGameSelect")?.value === WORLD_HOPPER_GAME_NAME ? "worldHopper" : "standard";
+}
+
+function isWorldHopperMode() {
+  return activeMultiverseMode() && multiverseStyle() === "worldHopper";
+}
+
+function multiverseMaxPlayers() {
+  return isWorldHopperMode() ? 6 : 5;
+}
+
+function multiverseWinLabel(value) {
+  if (value === "brainiac") return "Brainiac Ending (VP)";
+  if (value === "deimos") return "Deimos Defeated (VP)";
+  return "Last Player Standing";
+}
+
+function multiverseStyleLabel(value) {
+  return value === "worldHopper" ? "World Hopper" : "Standard Multiverse";
+}
+
+function splitMultiverseText(value) {
+  return String(value || "").split(/[\n,]+/).map(v => v.trim()).filter(Boolean).slice(0, 50);
+}
+
+function getMultiverseLocationCards() {
+  return (App.data.knownCards || [])
+    .filter(c => (c.cardType || "").toLowerCase() === "multiverse location")
+    .sort((a, b) => naturalCompare(a.name, b.name) || naturalCompare(a.set, b.set));
+}
+
+function _buildMultiverseLocationOptions(currentValue, otherChosen) {
+  const banned = App.data.bannedCards || [];
+  return getMultiverseLocationCards()
+    .filter(c => {
+      const key = `${c.name}||${c.set || "Other"}||${c.cardType || ""}`;
+      if (otherChosen.includes(key) && key !== currentValue) return false;
+      if (banned.some(b => b.name === c.name && (b.set || b.type || "Other") === (c.set || "Other"))) return false;
+      return true;
+    })
+    .map(c => {
+      const key = `${c.name}||${c.set || "Other"}||${c.cardType || ""}`;
+      return `<option value="${_esc(key)}" ${key === currentValue ? "selected" : ""}>${_esc(c.name)} (${_esc(c.set || "Other")})</option>`;
+    }).join("");
+}
+
+function _buildMultiverseChampionOptions(currentValue, row) {
+  const allRows = [...document.querySelectorAll(".player-row")];
+  const characterValues = allRows.map(r => r.querySelector(".oversizedCard")?.value || "").filter(Boolean);
+  const chosenChampions = [...document.querySelectorAll(".mvChampionCard")].map(sel => sel.value).filter(Boolean);
+  return (App.data.knownOversized || [])
+    .filter(c => {
+      const key = `${c.name}||${c.fromSet}`;
+      if (characterValues.includes(key)) return false;
+      const selectedCount = chosenChampions.filter(value => value === key).length;
+      if (selectedCount > (key === currentValue ? 1 : 0)) return false;
+      return true;
+    })
+    .sort((a, b) => naturalCompare(a.name, b.name) || naturalCompare(a.fromSet, b.fromSet))
+    .map(c => {
+      const key = `${c.name}||${c.fromSet}`;
+      return `<option value="${_esc(key)}" ${key === currentValue ? "selected" : ""}>${_esc(c.name)} (${_esc(c.fromSet)})</option>`;
+    }).join("");
+}
+
+function getMultiverseEventSetOptions(currentValue, selectedValues) {
+  const options = App.data.crossovers
+    .filter(c => c.name && c.name !== "None")
+    .map(c => c.name)
+    .sort(naturalCompare);
+  return options
+    .filter(name => name === currentValue || !selectedValues.includes(name))
+    .map(name => `<option value="${_esc(name)}" ${name === currentValue ? "selected" : ""}>${_esc(name)}</option>`)
+    .join("");
+}
+
+function getMultiverseBaseSetOptions(currentValue, selectedValues) {
+  const options = (App.data.games || [])
+    .filter(g => !g.isRivals)
+    .map(g => g.name)
+    .sort(naturalCompare);
+  return options
+    .filter(name => name === currentValue || !selectedValues.includes(name))
+    .map(name => `<option value="${_esc(name)}" ${name === currentValue ? "selected" : ""}>${_esc(name)}</option>`)
+    .join("");
+}
+
+function updateMultiverseFields() {
+  const active = activeMultiverseMode();
+  const fields = document.getElementById("multiverseFields");
+  const hint = document.getElementById("multiverseHint");
+  const crossoverWrap = document.getElementById("crossoverWrap");
+  const winnerWrap = document.getElementById("multiverseWinnerWrap");
+  const baseSetsWrap = document.getElementById("multiverseBaseSetsWrap");
+  if (fields) fields.style.display = active ? "block" : "none";
+  if (hint) hint.style.display = active ? "block" : "none";
+  if (crossoverWrap) crossoverWrap.style.display = isMultiverseMode() ? "none" : "";
+  if (winnerWrap) winnerWrap.style.display = active && !multiverseNeedsVP() ? "" : "none";
+  if (baseSetsWrap) baseSetsWrap.style.display = active ? "" : "none";
+  if (active) {
+    const requiredBaseRows = isWorldHopperMode() ? 2 : 1;
+    while (document.querySelectorAll(".multiverse-base-row").length > requiredBaseRows) {
+      document.querySelector(".multiverse-base-row:last-child")?.remove();
+    }
+    while (document.querySelectorAll(".multiverse-base-row").length < requiredBaseRows) {
+      addMultiverseBaseSet();
+    }
+  }
+  updateMultiverseWinnerOptions();
+  document.querySelectorAll(".mv-score-wrap").forEach(el => {
+    const isMvRow = !!el.closest(".player-row")?.querySelector(".multiverse-player-group");
+    el.style.display = isMvRow && active && !multiverseNeedsVP() ? "none" : "";
+  });
+}
+
+function updateMultiverseWinnerOptions() {
+  const sel = document.getElementById("multiverseWinnerSelect");
+  if (!sel) return;
+  const current = sel.value;
+  const rows = [...document.querySelectorAll(".player-row")];
+  sel.innerHTML = rows.map(row => {
+    const name = row.querySelector(".pname")?.value || "";
+    return name ? `<option value="${_esc(name)}">${_esc(name)}</option>` : "";
+  }).join("");
+  if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
+function refreshMultiverseRows() {
+  if (!activeMultiverseMode()) return;
+  checkCrisis();
+}
+
+function currentMultiverseEventSets() {
+  return [...document.querySelectorAll(".multiverseEventSet")].map(sel => sel.value).filter(Boolean);
+}
+
+function currentMultiverseBaseSets() {
+  return [...document.querySelectorAll(".multiverseBaseSet")].map(sel => sel.value).filter(Boolean);
+}
+
+function addMultiverseBaseSet(prefill) {
+  const container = document.getElementById("multiverseBaseSetsContainer");
+  if (!container) return;
+  const selected = currentMultiverseBaseSets();
+  const value = prefill || "";
+  const div = document.createElement("div");
+  div.className = "additional-card-row multiverse-base-row fade";
+  div.innerHTML = `
+    <select class="multiverseBaseSet" onchange="refreshMultiverseBaseSetRows(); _markGameDirty();">
+      <option value="" disabled ${value ? "" : "selected"} class="placeholder-opt">— Choose Base Set —</option>
+      ${getMultiverseBaseSetOptions(value, selected)}
+    </select>
+  `;
+  container.appendChild(div);
+  _tintPlaceholders(div);
+}
+
+function refreshMultiverseBaseSetRows() {
+  const rows = [...document.querySelectorAll(".multiverse-base-row")];
+  rows.forEach(row => {
+    const sel = row.querySelector(".multiverseBaseSet");
+    if (!sel) return;
+    const current = sel.value;
+    const selected = currentMultiverseBaseSets().filter(v => v !== current);
+    sel.innerHTML = `<option value="" disabled ${current ? "" : "selected"} class="placeholder-opt">— Choose Base Set —</option>` +
+      getMultiverseBaseSetOptions(current, selected);
+    sel.value = current;
+  });
+}
+
+function addMultiverseEventSet(prefill) {
+  const container = document.getElementById("multiverseEventSetsContainer");
+  if (!container) return;
+  const selected = currentMultiverseEventSets();
+  const value = prefill || "";
+  const div = document.createElement("div");
+  div.className = "additional-card-row multiverse-event-row fade";
+  div.innerHTML = `
+    <select class="multiverseEventSet" onchange="refreshMultiverseEventSetRows(); _markGameDirty();">
+      <option value="" disabled ${value ? "" : "selected"} class="placeholder-opt">— Choose Event Set —</option>
+      ${getMultiverseEventSetOptions(value, selected)}
+    </select>
+    <button class="danger" onclick="this.closest('.multiverse-event-row').remove(); refreshMultiverseEventSetRows(); _markGameDirty();">✕</button>
+  `;
+  container.appendChild(div);
+  _tintPlaceholders(div);
+}
+
+function refreshMultiverseEventSetRows() {
+  const rows = [...document.querySelectorAll(".multiverse-event-row")];
+  rows.forEach(row => {
+    const sel = row.querySelector(".multiverseEventSet");
+    if (!sel) return;
+    const current = sel.value;
+    const selected = currentMultiverseEventSets().filter(v => v !== current);
+    sel.innerHTML = `<option value="" disabled ${current ? "" : "selected"} class="placeholder-opt">— Choose Event Set —</option>` +
+      getMultiverseEventSetOptions(current, selected);
+    sel.value = current;
+  });
+}
+
 /* ===== Setup ===== */
 function renderGameSetup() {
   const data = App.data;
   const baseSelect = document.getElementById("baseGameSelect");
   const prev = baseSelect.value;
+  const gameOptions = [
+    { name: MULTIVERSE_GAME_NAME },
+    { name: WORLD_HOPPER_GAME_NAME },
+    ...data.games,
+  ];
   baseSelect.innerHTML =
-    [...data.games]
+    gameOptions
       .sort((a, b) => (a.name === "Original Core Set (2012)" ? -1 : b.name === "Original Core Set (2012)" ? 1 : naturalCompare(a.name, b.name)))
       .map(g => `<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
   if (prev) baseSelect.value = prev;
@@ -81,16 +305,19 @@ function renderGameSetup() {
   const crossSelect = document.getElementById("crossoverSelect");
   const prevC = crossSelect.value;
   const baseIsRivals = isRivalsMode();
+  const multiverse = isMultiverseMode();
   crossSelect.innerHTML =
     [...data.crossovers]
-      .filter(c => !baseIsRivals || !c.isCrisis)
+      .filter(c => (!baseIsRivals && !multiverse) || !c.isCrisis)
       .sort((a, b) => (a.name === "None" ? -1 : b.name === "None" ? 1 : naturalCompare(a.name, b.name)))
       .map(c => `<option value="${_esc(c.name)}" data-crisis="${c.isCrisis}">${_esc(c.name)}</option>`).join("");
   if (prevC) crossSelect.value = prevC;
   if (!crossSelect.value && crossSelect.options.length) crossSelect.value = "None";
+  if (multiverse) crossSelect.value = "None";
 
   checkCrisis();
   updateRivalsHint();
+  updateMultiverseFields();
 }
 
 function onBaseGameChange() {
@@ -116,11 +343,13 @@ function onBaseGameChange() {
 
 function onCrossoverChange() {
   checkCrisis();
+  updateMultiverseFields();
 }
 
 function checkCrisis() {
   const crisis = isCrisisMode();
   const rivals = isRivalsMode();
+  const multiverse = activeMultiverseMode();
   const editMode = _editingEntry != null;
   document.getElementById("saveBarNormal").style.display = editMode ? "none" : "block";
   document.getElementById("editModeBanner").style.display = editMode ? "flex" : "none";
@@ -131,6 +360,7 @@ function checkCrisis() {
   crisisBtn.style.display = crisis ? "inline-block" : "none";
   document.getElementById("crisisTeamFields").style.display = crisis ? "block" : "none";
   document.getElementById("rivalsResultFields").style.display = rivals && !crisis ? "block" : "none";
+  updateMultiverseFields();
 
   const existing = [...document.querySelectorAll(".player-row")];
   const saved = existing.map(r => ({
@@ -139,6 +369,12 @@ function checkCrisis() {
     oversizedFrom:r.dataset.oversizedFrom || "",
     oversizedKey: r.querySelector(".oversizedCard")?.value || "",
     rivalsCharacter: r.querySelector(".rivalsCharacter")?.value || r.dataset.rivalsCharacter || "",
+    multiverseLocationKey: r.querySelector(".multiverseLocationCard")?.value || "",
+    multiverseChampions: [...r.querySelectorAll(".mvChampionCard")].map(sel => {
+      const [name, fromSet] = (sel.value || "").split("||");
+      return { name: name || "", fromSet: fromSet || "" };
+    }),
+    championsRemaining: r.querySelector(".championsRemaining")?.value || "",
     score:        r.querySelector(".score")?.value   || "",
     nemesis:      r.querySelector(".nemesis")?.value || "",
   }));
@@ -156,6 +392,7 @@ function checkCrisis() {
   updateAllPlayerSelects();
   updateAddPlayerBtn();
   updateRivalsWinnerOptions();
+  updateMultiverseWinnerOptions();
 }
 
 function isCrisisMode() {
@@ -173,6 +410,7 @@ function _appendPlayerRow(prefill) {
   const data    = App.data;
   const crisis  = isCrisisMode();
   const rivals  = isRivalsMode() && !crisis;
+  const multiverse = activeMultiverseMode();
   const container = document.getElementById("playerContainer");
 
   const knownKey  = prefill.oversizedKey && prefill.oversizedKey !== "__new__" ? prefill.oversizedKey : "";
@@ -209,6 +447,28 @@ function _appendPlayerRow(prefill) {
   const rivalsCharOptions = rivalsChars.map(ch =>
     `<option value="${_esc(ch)}" ${ch === selectedRivalsCharacter ? "selected" : ""}>${_esc(ch)}</option>`
   ).join("");
+  const locationKey = prefill.multiverseLocationKey ||
+    (prefill.multiverseLocation ? `${prefill.multiverseLocation}||${prefill.multiverseLocationSet || "Multiverse"}||${prefill.multiverseLocationCardType || "Multiverse Location"}` : "");
+  const otherLocations = [...document.querySelectorAll(".player-row .multiverseLocationCard")]
+    .map(sel => sel.value).filter(Boolean);
+  const locationOptions = _buildMultiverseLocationOptions(locationKey, otherLocations);
+  const mvChampions = Array.isArray(prefill.multiverseChampions) ? prefill.multiverseChampions : [];
+  const mvChampionRows = [0, 1, 2].map((_, idx) => {
+    const ch = mvChampions[idx] || {};
+    const key = ch.name ? `${ch.name}||${ch.fromSet || ch.set || ""}` : "";
+    return `<label class="mv-field mv-champion-row"><span>Champion ${idx + 1}</span>
+      <select class="mvChampionCard" onchange="refreshAllOversizedDropdowns(); refreshMultiverseChampionDropdowns(); _markGameDirty();">
+        <option value="" disabled ${key ? "" : "selected"} class="placeholder-opt">— Choose Champion —</option>
+        ${_buildMultiverseChampionOptions(key, div)}
+      </select>
+    </label>`;
+  }).join("") + `
+    <label class="mv-field mv-remaining-field"><span>Champions Left</span>
+      <select class="championsRemaining" onchange="_markGameDirty();">
+        <option value="" disabled ${prefill.championsRemaining === "" || prefill.championsRemaining == null ? "selected" : ""} class="placeholder-opt">—</option>
+        ${[0,1,2,3].map(n => `<option value="${n}" ${String(prefill.championsRemaining) === String(n) ? "selected" : ""}>${n}</option>`).join("")}
+      </select>
+    </label>`;
 
   div.innerHTML = `
     <select class="pname" onchange="updateAllPlayerSelects(); updateAddPlayerBtn(); _markGameDirty();">
@@ -235,14 +495,29 @@ function _appendPlayerRow(prefill) {
       </div>
     </div>`}
     ${crisis || rivals ? "" : `
+      ${multiverse ? `
+      <div class="multiverse-player-group">
+        <label class="mv-field mv-location-field"><span>Location</span>
+          <select class="multiverseLocationCard" onchange="refreshMultiverseLocationDropdowns(); _markGameDirty();">
+            <option value="" disabled ${locationKey ? "" : "selected"} class="placeholder-opt">— Choose Location —</option>
+            ${locationOptions}
+          </select>
+        </label>
+        <div class="mv-champion-grid">${mvChampionRows}</div>
+      </div>
+      ` : ""}
       <div class="score-nemesis-group">
-        <label class="field-inline-label">Score (VPs):</label>
-        <input type="number" class="score" min="0" value="${scoreVal}" oninput="_markGameDirty();">
-        <label class="field-inline-label"># Nemesis Defeated:</label>
-        <input type="number" class="nemesis" min="0" value="${nemesisVal}" oninput="_markGameDirty();">
+        <span class="mv-score-wrap">
+          <label class="field-inline-label">Score (VPs):</label>
+          <input type="number" class="score" min="0" value="${scoreVal}" oninput="_markGameDirty();">
+        </span>
+        ${multiverse ? "" : `
+          <label class="field-inline-label"># Nemesis Defeated:</label>
+          <input type="number" class="nemesis" min="0" value="${nemesisVal}" oninput="_markGameDirty();">
+        `}
       </div>
     `}
-    <button class="danger" onclick="removePlayerRow(this)">✕</button>
+    <button class="secondary remove-player-btn" title="Remove player from this game" onclick="removePlayerRow(this)">Remove Player</button>
   `;
   container.appendChild(div);
   _tintPlaceholders(div);
@@ -252,6 +527,9 @@ function _appendPlayerRow(prefill) {
     updateRivalsWinnerOptions();
     return;
   }
+  updateMultiverseFields();
+  refreshMultiverseLocationDropdowns();
+  refreshMultiverseChampionDropdowns();
 
   const cardSel      = div.querySelector(".oversizedCard");
   const setFilterSel = div.querySelector(".oversizedSetFilter");
@@ -331,6 +609,20 @@ function _buildOversizedOptions(otherChosen, setFilter) {
     }).join("");
 }
 
+function _syncOversizedRowDataset(row) {
+  const sel = row?.querySelector(".oversizedCard");
+  if (!row || !sel?.value) {
+    if (row) {
+      row.dataset.oversizedName = "";
+      row.dataset.oversizedFrom = "";
+    }
+    return;
+  }
+  const [n, f] = sel.value.split("||");
+  row.dataset.oversizedName = n || "";
+  row.dataset.oversizedFrom = f || "";
+}
+
 function onRivalsCharacterChange(sel) {
   const row = sel.closest(".player-row");
   row.dataset.rivalsCharacter = sel.value || "";
@@ -384,10 +676,12 @@ function onOversizedSetFilterChange(setFilterSel) {
   const cardSel = row.querySelector(".oversizedCard");
   const setFilter = setFilterSel.value;
 
+  const championChosen = [...document.querySelectorAll(".mvChampionCard")].map(sel => sel.value).filter(Boolean);
   const otherChosen = [...document.querySelectorAll(".player-row")]
     .filter(r => r !== row)
     .map(r => r.querySelector(".oversizedCard")?.value)
-    .filter(v => v && v !== "");
+    .filter(v => v && v !== "")
+    .concat(championChosen);
 
   // Preserve any temp deleted options
   const deletedOpts = [...cardSel.options]
@@ -401,26 +695,20 @@ function onOversizedSetFilterChange(setFilterSel) {
     ${deletedOpts.map(o => `<option value="${_esc(o.value)}" data-is-deleted="true" style="color:#ef4444;">${_esc(o.text)}</option>`).join("")}
     ${opts}
   `;
-  row.dataset.oversizedName = "";
-  row.dataset.oversizedFrom = "";
+  _syncOversizedRowDataset(row);
   _tintPlaceholders(row);
 }
 
 function onOversizedCardChange(sel) {
   const row = sel.closest(".player-row");
-  if (sel.value) {
-    const [n, f] = sel.value.split("||");
-    row.dataset.oversizedName = n || "";
-    row.dataset.oversizedFrom = f || "";
-  } else {
-    row.dataset.oversizedName = "";
-    row.dataset.oversizedFrom = "";
-  }
+  _syncOversizedRowDataset(row);
   refreshAllOversizedDropdowns();
+  refreshMultiverseChampionDropdowns();
 }
 
 function refreshAllOversizedDropdowns() {
   const rows = [...document.querySelectorAll(".player-row")];
+  const championChosen = [...document.querySelectorAll(".mvChampionCard")].map(sel => sel.value).filter(Boolean);
   rows.forEach((row, i) => {
     const cardSel   = row.querySelector(".oversizedCard");
     const setFilterSel = row.querySelector(".oversizedSetFilter");
@@ -431,7 +719,8 @@ function refreshAllOversizedDropdowns() {
     const otherChosen = rows
       .filter((_, j) => j !== i)
       .map(r => r.querySelector(".oversizedCard")?.value)
-      .filter(v => v && v !== "");
+      .filter(v => v && v !== "")
+      .concat(championChosen);
 
     // Preserve temp deleted options
     const deletedOpts = [...cardSel.options]
@@ -439,21 +728,68 @@ function refreshAllOversizedDropdowns() {
       .map(o => ({ value: o.value, text: o.textContent }));
 
     const opts = _buildOversizedOptions(otherChosen, setFilter);
+    const currentIsAllowed = currentVal && !otherChosen.includes(currentVal);
     cardSel.innerHTML = `
-      <option value="" disabled selected class="placeholder-opt">— Choose Card —</option>
+      <option value="" disabled ${currentIsAllowed ? "" : "selected"} class="placeholder-opt">— Choose Card —</option>
       ${deletedOpts.map(o => `<option value="${_esc(o.value)}" data-is-deleted="true" style="color:#ef4444;">${_esc(o.text)}</option>`).join("")}
       ${opts}
     `;
-    if (currentVal && [...cardSel.options].some(o => o.value === currentVal)) {
+    if (currentIsAllowed && [...cardSel.options].some(o => o.value === currentVal)) {
       cardSel.value = currentVal;
+    } else {
+      cardSel.value = "";
     }
+    _syncOversizedRowDataset(row);
     _tintPlaceholders(row);
   });
 }
 
+function refreshMultiverseLocationDropdowns() {
+  const rows = [...document.querySelectorAll(".player-row")];
+  rows.forEach(row => {
+    const sel = row.querySelector(".multiverseLocationCard");
+    if (!sel) return;
+    const current = sel.value;
+    const otherChosen = rows
+      .filter(r => r !== row)
+      .map(r => r.querySelector(".multiverseLocationCard")?.value)
+      .filter(Boolean);
+    sel.innerHTML = `<option value="" disabled ${current ? "" : "selected"} class="placeholder-opt">— Choose Location —</option>` +
+      _buildMultiverseLocationOptions(current, otherChosen);
+    if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+    _tintPlaceholders(row);
+  });
+}
+
+function refreshMultiverseChampionDropdowns() {
+  document.querySelectorAll(".player-row").forEach(row => {
+    row.querySelectorAll(".mvChampionCard").forEach(sel => {
+      const current = sel.value;
+      const options = _buildMultiverseChampionOptions(current, row);
+      const currentIsAllowed = current && options.includes(`value="${_esc(current)}"`);
+      sel.innerHTML = `<option value="" disabled ${currentIsAllowed ? "" : "selected"} class="placeholder-opt">— Choose Champion —</option>` +
+        options;
+      if (currentIsAllowed && [...sel.options].some(o => o.value === current)) sel.value = current;
+    });
+    _tintPlaceholders(row);
+  });
+}
+
+function _showPlayerRowWarning(btn, msg) {
+  const row = btn.closest(".player-row");
+  if (!row) return;
+  const existing = row.querySelector(".player-row-warning");
+  if (existing) existing.remove();
+  const span = document.createElement("span");
+  span.className = "player-row-warning";
+  span.textContent = msg;
+  row.appendChild(span);
+  setTimeout(() => { if (span.parentNode) span.remove(); }, 4500);
+}
+
 function removePlayerRow(btn) {
   if (document.querySelectorAll(".player-row").length <= 2) {
-    showToast("Minimum 2 players required.", "error"); return;
+    _showPlayerRowWarning(btn, "Solo mode is not supported at this time. Games require at least 2 players."); return;
   }
   btn.closest(".player-row").remove();
   updateAllPlayerSelects();
@@ -461,6 +797,7 @@ function removePlayerRow(btn) {
   refreshAllOversizedDropdowns();
   refreshAllRivalsCharacterDropdowns();
   updateRivalsWinnerOptions();
+  updateMultiverseWinnerOptions();
   _markGameDirty();
 }
 
@@ -479,13 +816,15 @@ function _showAddPlayerMsg(msg) {
 function addPlayerToGame() {
   const rows   = [...document.querySelectorAll(".player-row")];
   const rivals = isRivalsMode();
+  const multiverse = activeMultiverseMode();
   if (rivals && rows.length >= 2) { _showAddPlayerMsg("Rivals mode: maximum 2 players."); return; }
-  if (rows.length >= 5) { _showAddPlayerMsg("Maximum 5 players reached."); return; }
+  const maxPlayers = multiverse ? multiverseMaxPlayers() : 5;
+  if (rows.length >= maxPlayers) { _showAddPlayerMsg(`Maximum ${maxPlayers} players reached.`); return; }
   if (rows.length >= App.data.players.length) {
     _showAddPlayerMsg("All players are already added. Go to Settings to add more players.");
     return;
   }
-  if (!rivals && App.data.knownOversized.length < rows.length + 1) {
+  if (!rivals && !multiverse && App.data.knownOversized.length < rows.length + 1) {
     _showAddPlayerMsg(`Not enough oversized cards — need at least ${rows.length + 1} but only ${App.data.knownOversized.length} saved. Add more in Settings.`);
     return;
   }
@@ -508,9 +847,10 @@ function updateAddPlayerBtn() {
   const btn  = document.getElementById("addPlayerBtn");
   const rows = document.querySelectorAll(".player-row").length;
   const rivals = isRivalsMode();
-  const max  = rivals ? 2 : 5;
+  const multiverse = activeMultiverseMode();
+  const max  = rivals ? 2 : multiverse ? multiverseMaxPlayers() : 5;
   btn.disabled = rows >= max;
-  btn.title = rows >= max ? (rivals ? "Rivals mode: max 2 players" : "Max 5 players") : "";
+  btn.title = rows >= max ? (rivals ? "Rivals mode: max 2 players" : `Max ${max} players`) : "";
 }
 
 function updateAllPlayerSelects() {
@@ -530,6 +870,7 @@ function updateAllPlayerSelects() {
     });
   });
   updateRivalsWinnerOptions();
+  updateMultiverseWinnerOptions();
 }
 
 function _markGameDirty() {
@@ -537,6 +878,10 @@ function _markGameDirty() {
 }
 
 /* ===== Additional Cards ===== */
+function _additionalCardLibrary() {
+  return (App.data.knownCards || []).filter(c => !isMultiverseLocationCard(c));
+}
+
 function currentAdditionalCards() {
   return [...document.querySelectorAll(".additional-card-row:not(.card-picker-row)")].map(r => ({
     name: (r.querySelector(".addCard")?.value || "").trim(),
@@ -548,7 +893,8 @@ function currentAdditionalCards() {
 function addAdditionalCard(prefillName, prefillSet, prefillCardType) {
   // Called with prefill when loading an existing game entry for editing
   if (prefillName !== undefined) {
-    const isKnown = App.data.knownCards.some(
+    if (isMultiverseLocationCard({ name: prefillName, set: prefillSet || "Other", cardType: prefillCardType || "Hero" })) return;
+    const isKnown = _additionalCardLibrary().some(
       k => k.name.toLowerCase() === prefillName.toLowerCase() && k.set === (prefillSet || "Other")
     );
     _appendCardRow(prefillName, prefillSet || "Other", prefillCardType || "Hero", isKnown);
@@ -562,7 +908,8 @@ function addAdditionalCard(prefillName, prefillSet, prefillCardType) {
   const container = document.getElementById("additionalCardsContainer");
 
   // No library cards at all → show inline message
-  if (!App.data.knownCards.length) {
+  const libraryCards = _additionalCardLibrary();
+  if (!libraryCards.length) {
     const div = document.createElement("div");
     div.className = "additional-card-row card-picker-row fade";
     div.innerHTML = `
@@ -575,7 +922,7 @@ function addAdditionalCard(prefillName, prefillSet, prefillCardType) {
 
   const already   = currentAdditionalCards();
   const bannedC   = App.data.bannedCards || [];
-  const available = App.data.knownCards.filter(k =>
+  const available = libraryCards.filter(k =>
     !already.some(a => a.name.toLowerCase() === k.name.toLowerCase() && a.set === k.set) &&
     !bannedC.some(b => b.name === k.name && b.set === k.set)
   );
@@ -592,7 +939,7 @@ function addAdditionalCard(prefillName, prefillSet, prefillCardType) {
   const div = document.createElement("div");
   div.className = "additional-card-row card-picker-row fade";
 
-  const sets = [...new Set(App.data.knownCards.map(k => k.set || "Other"))].sort(naturalCompare);
+  const sets = [...new Set(libraryCards.map(k => k.set || "Other"))].sort(naturalCompare);
   const setFilterHtml = `<select class="cardSetPicker" onchange="onAdditionalCardSetFilter(this)">
       <option value="" disabled selected class="placeholder-opt">— Choose Set —</option>
       ${sets.map(s => `<option value="${_esc(s)}">${_esc(s)}</option>`).join("")}
@@ -615,7 +962,7 @@ function onAdditionalCardSetFilter(setFilterSel) {
 
   const already   = currentAdditionalCards();
   const bannedC2  = App.data.bannedCards || [];
-  const available = App.data.knownCards.filter(k => {
+  const available = _additionalCardLibrary().filter(k => {
     if (already.some(a => a.name.toLowerCase() === k.name.toLowerCase() && a.set === k.set)) return false;
     if (setFilter && k.set !== setFilter) return false;
     if (bannedC2.some(b => b.name === k.name && b.set === k.set)) return false;
@@ -672,6 +1019,7 @@ function validateGame() {
   const rows   = [...document.querySelectorAll(".player-row")];
   const crisis = isCrisisMode();
   const rivals = isRivalsMode();
+  const multiverse = activeMultiverseMode();
 
   if (!document.getElementById("gameDateInput").value) {
     _showGameError("Please select a game date."); return false;
@@ -681,9 +1029,16 @@ function validateGame() {
     _showGameError("Crisis expansions cannot be selected with Rivals base games."); return false;
   }
 
+  if (isMultiverseMode() && (rivals || crisis)) {
+    _showGameError("Multiverse cannot be combined with Rivals or Crisis."); return false;
+  }
+
   // Rivals player count check
   if (rivals && rows.length !== 2) {
     _showGameError("Rivals mode requires exactly 2 players."); return false;
+  }
+  if (multiverse && (rows.length < 2 || rows.length > multiverseMaxPlayers())) {
+    _showGameError(`${multiverseStyleLabel(multiverseStyle())} supports 2 to ${multiverseMaxPlayers()} players.`); return false;
   }
 
   const playerNames = rows.map(r => r.querySelector(".pname").value);
@@ -705,15 +1060,41 @@ function validateGame() {
       _showGameError(`Please select an Oversized Card for ${pname}.`); return false;
     }
 
-    if (!crisis && !rivals) {
+    if (multiverse) {
+      const location = row.querySelector(".multiverseLocationCard")?.value || "";
+      if (!location) { _showGameError(`Enter a Multiverse Location for ${pname}.`); return false; }
+      const character = row.querySelector(".oversizedCard")?.value || "";
+      const champions = [...row.querySelectorAll(".mvChampionCard")].map(sel => sel.value).filter(Boolean);
+      const missingChampion = [...row.querySelectorAll(".mvChampionCard")].findIndex(sel => !sel.value);
+      if (missingChampion >= 0) {
+        _showGameError(`Enter Champion ${missingChampion + 1} for ${pname}.`); return false;
+      }
+      const dupeChampion = champions.find((value, idx) => champions.indexOf(value) !== idx);
+      if (dupeChampion) { _showGameError(`Each Champion for ${pname} must be unique.`); return false; }
+      if (character && champions.includes(character)) {
+        _showGameError(`${pname}'s Champions cannot include their selected character.`); return false;
+      }
+      const remaining = row.querySelector(".championsRemaining");
+      if (!remaining || remaining.value === "") {
+        _showGameError(`Enter Champions Remaining for ${pname}.`); return false;
+      }
+      if (parseInt(remaining.value, 10) < 0 || parseInt(remaining.value, 10) > 3) {
+        _showGameError(`Champions Remaining for ${pname} must be between 0 and 3.`); return false;
+      }
+    }
+
+    if (!crisis && !rivals && (!multiverse || multiverseNeedsVP())) {
       const score   = row.querySelector(".score");
-      const nemesis = row.querySelector(".nemesis");
       if (!score || score.value === "") {
         _showGameError(`Enter Score (VPs) for ${pname}.`); return false;
       }
       if (parseFloat(score.value) < 0) {
         _showGameError(`Score for ${pname} cannot be negative.`); return false;
       }
+    }
+
+    if (!crisis && !rivals && !multiverse) {
+      const nemesis = row.querySelector(".nemesis");
       if (!nemesis || nemesis.value === "") {
         _showGameError(`Enter # Nemesis Defeated for ${pname}.`); return false;
       }
@@ -754,6 +1135,51 @@ function validateGame() {
     }
   }
 
+  if (multiverse && !multiverseNeedsVP() && !document.getElementById("multiverseWinnerSelect")?.value) {
+    _showGameError("Choose the Multiverse winner."); return false;
+  }
+
+  if (multiverse && !currentMultiverseEventSets().length) {
+    _showGameError("Choose at least one Multiverse Event set."); return false;
+  }
+
+  if (multiverse) {
+    const requiredBaseSets = isWorldHopperMode() ? 2 : 1;
+    if (currentMultiverseBaseSets().length < requiredBaseSets) {
+      _showGameError(`${multiverseStyleLabel(multiverseStyle())} requires at least ${requiredBaseSets} base set${requiredBaseSets === 1 ? "" : "s"} in Base Sets Used.`); return false;
+    }
+  }
+
+  if (multiverse) {
+    const locations = rows.map(r => r.querySelector(".multiverseLocationCard")?.value || "").filter(Boolean);
+    const dupeLocation = locations.find((value, idx) => locations.indexOf(value) !== idx);
+    if (dupeLocation) {
+      _showGameError("Each Multiverse Location can only be assigned once per game."); return false;
+    }
+    const characterValues = rows.map(r => r.querySelector(".oversizedCard")?.value || "").filter(Boolean);
+    const allChampions = rows.flatMap(r => [...r.querySelectorAll(".mvChampionCard")].map(sel => sel.value).filter(Boolean));
+    const dupeChampion = allChampions.find((value, idx) => allChampions.indexOf(value) !== idx);
+    if (dupeChampion) {
+      const [name] = dupeChampion.split("||");
+      _showGameError(`Multiverse Champion "${name}" can only be selected once per game.`); return false;
+    }
+    const championMatchesCharacter = allChampions.find(value => characterValues.includes(value));
+    if (championMatchesCharacter) {
+      const [name] = championMatchesCharacter.split("||");
+      _showGameError(`"${name}" is already selected as a character and cannot also be a Champion.`); return false;
+    }
+    const remainingCounts = rows.map(r => parseInt(r.querySelector(".championsRemaining")?.value, 10) || 0);
+    if (remainingCounts.every(n => n === 0)) {
+      _showGameError("At least one player must have Champions remaining in Multiverse mode."); return false;
+    }
+    if (multiverseNeedsVP()) {
+      const zeroScores = rows.filter(r => (parseInt(r.querySelector(".score")?.value, 10) || 0) === 0);
+      if (zeroScores.length > 1) {
+        _showGameError("For Multiverse VP endings, only one player can have 0 VP."); return false;
+      }
+    }
+  }
+
   // Duplicate additional cards
   const cards = currentAdditionalCards();
   for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) {
@@ -779,7 +1205,7 @@ function saveGame() {
   const gameNum = _editingEntry != null ? _editingEntry.gameNum : (data.history.length + 1);
   const additional = [...document.querySelectorAll(".additional-card-row:not(.card-picker-row)")]
     .map(r => ({ name: (r.querySelector(".addCard")?.value || "").trim(), set: r.dataset.cardSet || "Other", cardType: r.dataset.cardType || "Hero" }))
-    .filter(c => c.name);
+    .filter(c => c.name && !isMultiverseLocationCard(c));
   additional.forEach(c => {
     const isArchived = (data.archivedCards || []).some(k => k.name.toLowerCase() === c.name.toLowerCase() && (k.set || k.type || "Other") === c.set);
     const isBanned = (data.bannedCards || []).some(k => k.name.toLowerCase() === c.name.toLowerCase() && (k.set || k.type || "Other") === c.set);
@@ -794,8 +1220,20 @@ function saveGame() {
     const [n, f] = sel.value.split("||");
     return { name: n || "", fromSet: f || "" };
   }
+  function getMultiverseLocation(row) {
+    const value = row.querySelector(".multiverseLocationCard")?.value || "";
+    const [name, set, cardType] = value.split("||");
+    return { name: name || "", set: set || "Other", cardType: cardType || "Multiverse Location" };
+  }
+  function getMultiverseChampions(row) {
+    return [...row.querySelectorAll(".mvChampionCard")].map(sel => {
+      const [name, fromSet] = (sel.value || "").split("||");
+      return { name: name || "", fromSet: fromSet || "" };
+    }).filter(ch => ch.name);
+  }
 
   const rivals = isRivalsMode();
+  const multiverse = activeMultiverseMode();
   let entry;
   if (isCrisisMode()) {
     const teamWon     = document.getElementById("crisisWin").checked;
@@ -816,6 +1254,51 @@ function saveGame() {
       p.place = p.name === winnerName ? 1 : 2;
     });
     entry = { gameNum, game: base, cross, isCrisis: false, isRivals: true, players, additional, date, dateSort: dateSortKey(date) };
+  } else if (multiverse) {
+    const needsVP = multiverseNeedsVP();
+    const winCondition = document.getElementById("multiverseWinCondition")?.value || "lastPlayerStanding";
+    const winnerName = document.getElementById("multiverseWinnerSelect")?.value || "";
+    const players = rows.map(r => {
+      const ov = getOv(r); if (ov.name) _saveOversized(ov.name, ov.fromSet);
+      const location = getMultiverseLocation(r);
+      const champions = getMultiverseChampions(r);
+      return {
+        name: r.querySelector(".pname").value,
+        oversizedCard: ov.name,
+        oversizedFrom: ov.fromSet,
+        multiverseLocation: location.name,
+        multiverseLocationSet: location.set,
+        multiverseLocationCardType: location.cardType,
+        multiverseChampions: champions,
+        championsRemaining: parseInt(r.querySelector(".championsRemaining")?.value, 10) || 0,
+        score: needsVP ? (parseInt(r.querySelector(".score")?.value, 10) || 0) : 0,
+        nemesis: 0,
+      };
+    });
+    if (needsVP) {
+      const maxScore = Math.max(...players.map(p => p.score));
+      const topCount = players.filter(p => p.score === maxScore).length;
+      const ranked = [...players].sort((a, b) => b.score - a.score);
+      players.forEach(p => {
+        const place = ranked.findIndex(r => r === p);
+        p.result = topCount > 1 && p.score === maxScore ? "Tie" : p.score === maxScore ? "Win" : "Loss";
+        p.place = place + 1;
+      });
+    } else {
+      players.forEach(p => {
+        p.result = p.name === winnerName ? "Win" : "Loss";
+        p.place = p.name === winnerName ? 1 : 2;
+      });
+    }
+    entry = {
+      gameNum, game: base, cross,
+      isCrisis: false, isRivals: false, isMultiverse: true,
+      multiverseStyle: multiverseStyle(),
+      multiverseWinCondition: winCondition,
+      multiverseBaseSets: currentMultiverseBaseSets(),
+      multiverseEventSets: currentMultiverseEventSets(),
+      players, additional, date, dateSort: dateSortKey(date),
+    };
   } else {
     const players = rows.map(r => {
       const ov = getOv(r); if (ov.name) _saveOversized(ov.name, ov.fromSet);
@@ -823,14 +1306,7 @@ function saveGame() {
                score: parseInt(r.querySelector(".score")?.value) || 0,
                nemesis: parseInt(r.querySelector(".nemesis")?.value) || 0 };
     });
-    const maxScore = Math.max(...players.map(p => p.score));
-    const topCount  = players.filter(p => p.score === maxScore).length;
-    const ranked = [...players].sort((a, b) => b.score - a.score);
-    players.forEach(p => {
-      const place = ranked.findIndex(r => r === p);
-      p.result = topCount > 1 && p.score === maxScore ? "Tie" : p.score === maxScore ? "Win" : "Loss";
-      p.place  = place + 1;
-    });
+    applyStandardGameResults(players);
     entry = { gameNum, game: base, cross, isCrisis: false, isRivals: rivals, players, additional, date, dateSort: dateSortKey(date) };
   }
 
@@ -973,7 +1449,11 @@ function initGamePage() {
   if (commentInput) commentInput.value = "";
   document.getElementById("crisisNemesis").value = "";
   document.getElementById("crisisWin").checked = true;
+  if (document.getElementById("multiverseWinCondition")) document.getElementById("multiverseWinCondition").value = "lastPlayerStanding";
+  if (document.getElementById("multiverseBaseSetsContainer")) document.getElementById("multiverseBaseSetsContainer").innerHTML = "";
+  if (document.getElementById("multiverseEventSetsContainer")) document.getElementById("multiverseEventSetsContainer").innerHTML = "";
   document.getElementById("gameDateInput").value = toDateInputValue(null);
+  updateMultiverseFields();
 
   document.getElementById("saveGameBtn").textContent = "Save Game";
   document.getElementById("saveGameCrisisBtn").textContent = "Save Crisis Game";

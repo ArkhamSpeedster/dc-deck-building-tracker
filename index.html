@@ -43,7 +43,7 @@
 <main class="page active" id="homePage">
   <div class="home-hero card">
     <h2 class="home-title">DeckLedger</h2>
-    <p class="home-version">Beta · Version <span id="homeAppVersion">0.9.0-beta</span></p>
+    <p class="home-version">Beta · Version <span id="homeAppVersion">0.9.1-beta</span></p>
     <p class="home-subtitle">An unofficial companion and statistics tracker for the DC Deck-Building Game created by <a href="https://cryptozoic.com/" target="_blank" rel="noopener noreferrer">Cryptozoic Entertainment</a>.</p>
 
     <!-- Quick nav sits right under the hero tagline -->
@@ -74,7 +74,7 @@
   <div class="home-about home-compact-grid">
     <section>
       <h3>Track the table</h3>
-      <p>Log sessions, scores, oversized cards, nemesis defeats, Crisis outcomes, Rivals games, and extra cards in a clean responsive tracker.</p>
+      <p>Log sessions, scores, oversized cards, nemesis defeats, Crisis outcomes, Rivals games, Multiverse variants, and extra cards in a clean responsive tracker. Base-game variant rules are not specifically modeled yet.</p>
     </section>
     <section>
       <h3>Keep backups</h3>
@@ -133,8 +133,10 @@
     <label for="baseGameSelect">Base Game:</label>
     <select id="baseGameSelect" onchange="onBaseGameChange()"></select>
 
-    <label for="crossoverSelect">Crossover / Expansion:</label>
-    <select id="crossoverSelect" onchange="onCrossoverChange()"></select>
+    <div id="crossoverWrap">
+      <label for="crossoverSelect">Crossover / Expansion:</label>
+      <select id="crossoverSelect" onchange="onCrossoverChange()"></select>
+    </div>
 
     <label for="gameDateInput">Game Date:</label>
     <input type="date" id="gameDateInput" style="max-width:200px;">
@@ -149,10 +151,33 @@
 
   <div class="card">
     <h3>Players</h3>
-    <p class="hint">Min 2, max 5. Each player must select an Oversized Card, Score (VPs), and # Nemesis Defeated. Rivals uses character assignment and win/loss only.</p>
+    <p class="hint">Add the players for this game, then complete the fields shown for the selected variant.</p>
     <p class="hint" id="rivalsHint" style="display:none;color:#c4b5fd;">Rivals mode active: exactly 2 players. Assign each player any Rivals character instead of oversized cards.</p>
+    <p class="hint" id="multiverseHint" style="display:none;color:#22c55e;">Multiverse variant active: choose each player's character, base set, Multiverse Location, and 3 Champion oversized cards. World Hopper supports up to 6 players and requires at least two base sets.</p>
     <div id="playerContainer"></div>
     <button class="primary" id="addPlayerBtn" onclick="addPlayerToGame()">+ Add Player</button>
+  </div>
+
+  <div class="card" id="multiverseFields" style="display:none;">
+    <h4 style="margin-top:0;">Multiverse Variant</h4>
+    <p class="hint">Choose the base set setup, Multiverse ending, and events used. World Hopper requires at least two actual base sets.</p>
+    <div id="multiverseBaseSetsWrap" style="display:none;">
+      <label>Base Sets Used:</label>
+      <div id="multiverseBaseSetsContainer"></div>
+    </div>
+    <label for="multiverseWinCondition">Win condition:</label>
+    <select id="multiverseWinCondition" onchange="updateMultiverseFields(); _markGameDirty();">
+      <option value="lastPlayerStanding">Last Player Standing</option>
+      <option value="brainiac">Brainiac Ending (VP)</option>
+      <option value="deimos">Deimos Defeated (VP)</option>
+    </select>
+    <div id="multiverseWinnerWrap">
+      <label for="multiverseWinnerSelect">Winner:</label>
+      <select id="multiverseWinnerSelect" onchange="_markGameDirty();"></select>
+    </div>
+    <label>Event sets used:</label>
+    <div id="multiverseEventSetsContainer"></div>
+    <button class="secondary" type="button" onclick="addMultiverseEventSet()">+ Add Event Set</button>
   </div>
 
   <div class="card" id="rivalsResultFields" style="display:none;">
@@ -204,7 +229,7 @@
       <div><label for="filterCross">Crossover:</label><select id="filterCross" onchange="applyHistoryFilter()"></select></div>
     </div>
   </div>
-  <div class="card" style="overflow-x:auto;">
+  <div class="card">
     <div id="historyList"></div>
   </div>
 </main>
@@ -304,7 +329,7 @@
 
   <div class="card collapsible-card">
     <div class="collapsible-header" onclick="toggleSection('adminCardsBody','adminCardsChev')">
-      <div class="collapsible-title"><h3>Additional Cards</h3><p>Promos and extras by set/type.</p></div><span id="adminCardsChev">▶</span>
+      <div class="collapsible-title"><h3>Additional Cards</h3><p>Promos, extras, and Multiverse Locations by set/type.</p></div><span id="adminCardsChev">▶</span>
     </div>
     <div class="collapsible-body collapsed" id="adminCardsBody">
       <div id="adminKnownCards" style="margin-top:8px;"></div>

@@ -14,7 +14,7 @@ A demo dataset is included so you can quickly see History and Stats populated.
 
 `sample-data/deckledger_demo_data.json`
 
-It includes four players, ten logged games, an extra Promo card named Reverse Flash, archived/banned cards that appear in history, and enough variety to show off History and Stats views.
+It includes four players, fourteen logged games, an extra Promo card named Reverse Flash, archived/banned cards that appear in history, a true tie example, three Multiverse examples including World Hopper, and enough variety to show off History and Stats views.
 
 To try it:
 
@@ -29,12 +29,14 @@ The sample data is also bundled in the app so `Load Sample Data` works when open
 ## What It Tracks
 
 - Game sessions with base game, crossover/expansion, date, players, oversized cards, scores, nemesis defeats, and optional comments.
-- Normal, Rivals, and Crisis games.
+- Normal, Rivals, Crisis, and Multiverse variant games.
 - Rivals-specific character assignment and win/loss results.
-- Player win rates, average scores, placements, Crisis results, Rivals results, and most-used oversized cards.
-- Overall set usage, crossover usage, top oversized cards, top additional cards, and outcome summaries.
+- Multiverse-specific character, Location, 3 Champion oversized cards, base sets, Event sets, style, and ending condition tracking.
+- Player win rates, average scores, placements, Crisis results, Rivals results, Multiverse results, and most-used oversized cards.
+- Overall set usage, crossover usage, top oversized cards, top additional cards, Multiverse Locations/Champions, and outcome summaries.
 - Saved additional cards with set and card type.
 - Saved oversized cards by source set.
+- Multiverse Locations are managed in the Additional Cards settings list with card type `Multiverse Location`, but they are only selectable in Multiverse games and are shown as player setup details in History/Stats. Champions use the Oversized Cards list.
 - Archived, banned, and removed labels in history and stats so old entries still make sense.
 - JSON export/import for backups and device transfer.
 - Import preview before overwriting local data.
@@ -72,6 +74,7 @@ Default card types:
 - Equipment
 - Hero
 - Location
+- Multiverse Location
 - Starter
 - Super Power
 - Super-Hero
@@ -81,6 +84,13 @@ Default card types:
 Default additional cards:
 
 - Gotham City Docks — Original Core Set (2012), Location
+- 30th Century Metropolis — Multiverse, Multiverse Location
+- Earth-2 — Multiverse, Multiverse Location
+- Fawcett City — Multiverse, Multiverse Location
+- Flashpoint Gotham City — Multiverse, Multiverse Location
+- Gotham City — Multiverse, Multiverse Location
+- Hub City — Multiverse, Multiverse Location
+- Metropolis — Multiverse, Multiverse Location
 
 Default oversized cards:
 
@@ -94,7 +104,7 @@ Default oversized cards:
 - Martian Manhunter — Promo
 - The Joker — Promo
 
-Batman and Superman from the Original Core Set are required defaults so a new game always has enough oversized cards to begin. Other default cards can be archived, banned, or removed by the user.
+Default additional and oversized cards are maintained by DeckLedger. They can be archived or banned, but they cannot be edited or permanently removed. User-added cards can be edited, archived, banned, or removed.
 
 ## Supported Sets
 
@@ -111,14 +121,14 @@ Rivals games are numbered for cleaner sorting, such as `Rivals 1: Batman vs Joke
 - `Ban` blocks additional or oversized cards from new games while keeping them labelled in history/stats.
 - `Remove` deletes an item from Settings after confirmation. Existing history stays unchanged and can show a removed label.
 - Settings can store up to 25 active players.
-- Logged games still use 2 to 5 players, with Rivals limited to exactly 2.
+- Logged games use 2 to 5 players, Rivals uses exactly 2, Standard Multiverse supports 2 to 5 players with at least one base set selected, and World Hopper supports 2 to 6 players with at least two actual base sets selected. Multiverse VP endings require real scoring data and allow at most one player to finish on 0 VP.
 - Card lists and logged game history do not have app-imposed count limits, though browser storage still has practical limits.
 - Player comparison in Stats supports up to 5 players at a time for readability.
 - Settings include compact controls for exporting/importing JSON, loading demo data, and resetting local data.
 
 ## Compatibility
 
-DeckLedger supports the standard competitive DC Deck-Building Game format, Rivals, and Crisis mode. Solo play and the *Rebirth* DC Deck-Building Game are not currently supported.
+DeckLedger supports the standard competitive DC Deck-Building Game format, Rivals, Crisis mode, and a Multiverse variant tracker. Multiverse and Multiverse (World Hopper) are selected from the Base Game dropdown. Multiverse logging records each player's character, Multiverse Location, 3 Champion oversized cards, base sets, Event sets, style, ending condition, and VP only when the ending calls for VP scoring. Standard Multiverse requires one base set; World Hopper requires at least two actual base sets. Base-game variant rules are not specifically modeled yet, though you can note house rules or variants in game comments. Solo play and the *Rebirth* DC Deck-Building Game are not currently supported.
 
 ## Project Structure
 

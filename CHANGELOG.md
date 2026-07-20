@@ -1,6 +1,14 @@
 # Changelog
 
-## 1.0.0 - 2026-07-07
+## 0.9.1-beta - 2026-07-20
+
+- Revamped History into collapsible game cards with quick result summaries.
+- Improved Multiverse logging/history display and World Hopper sample coverage.
+- Clarified Multiverse Locations as Multiverse-only setup data rather than normal additional cards.
+- Updated normal-game tie handling to use Nemesis defeated as the VP tie-breaker.
+- Expanded sample data with a true tie example and refreshed demo coverage.
+
+## 0.9.0-beta - 2026-07-07
 
 - Public release polish for DeckLedger.
 - Added local Chart.js bundling so charts do not load from a CDN.

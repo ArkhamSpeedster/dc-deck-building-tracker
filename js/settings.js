@@ -2,7 +2,8 @@
  * settings.js — Staged settings edits, edit-mode text fields
  */
 
-let _adminCardTypeFilter     = localStorage.getItem("dcAdminCardFilter")      || "";
+const DEFAULT_ADMIN_CARD_FILTER = "Original Core Set (2012)";
+let _adminCardTypeFilter     = localStorage.getItem("dcAdminCardFilter")      || DEFAULT_ADMIN_CARD_FILTER;
 let _adminOversizedSetFilter = localStorage.getItem("dcAdminOversizedFilter") || "";
 
 /* ===== Init ===== */
@@ -44,7 +45,7 @@ function renderAdmin() {
 }
 
 function syncAdminFilterPreferences() {
-  _adminCardTypeFilter     = localStorage.getItem("dcAdminCardFilter")      || "";
+  _adminCardTypeFilter     = localStorage.getItem("dcAdminCardFilter")      || DEFAULT_ADMIN_CARD_FILTER;
   _adminOversizedSetFilter = localStorage.getItem("dcAdminOversizedFilter") || "";
 }
 
@@ -75,6 +76,14 @@ function _adminStartEdit(btn, sectionKey, idx) {
     _showInlineWarning(btn, "Default card types cannot be edited.");
     return;
   }
+  if (sectionKey === "cards" && _isProtectedKnownCard(App.adminDraft.knownCards[idx])) {
+    _showInlineWarning(btn, "Default cards cannot be edited.");
+    return;
+  }
+  if (sectionKey === "oversized" && _isProtectedOversized(App.adminDraft.knownOversized[idx])) {
+    _showInlineWarning(btn, "Default oversized cards cannot be edited.");
+    return;
+  }
   const row = btn.closest(".admin-row");
   const staticEl = row.querySelector(".admin-static");
   if (!staticEl) return;
@@ -88,7 +97,9 @@ function _adminStartEdit(btn, sectionKey, idx) {
     if (lbl) lbl.addEventListener("mousedown", e => e.preventDefault());
   });
 
-  const originalVal = (staticEl.querySelector(".admin-static-name") || staticEl).textContent.trim();
+  const originalVal = staticEl.dataset.emptyName === "true"
+    ? ""
+    : (staticEl.querySelector(".admin-static-name") || staticEl).textContent.trim();
   const maxLen = sectionKey === "players" ? 20 : 30;
   const input = document.createElement("input");
   input.type = "text";
@@ -213,7 +224,7 @@ function _autoEditLastRow(containerId) {
 
 /* ===== Validation ===== */
 function _adminNameKey(name) {
-  return (name || "").trim().toLowerCase();
+  return String(name || "").trim().toLowerCase();
 }
 
 function _adminPlayerNameExists(name, ignoreIdx) {
@@ -744,6 +755,16 @@ function _isDefaultCardType(type) {
   return defaults.some(t => t.toLowerCase() === (type || "").toLowerCase());
 }
 
+function _isProtectedKnownCard(c) {
+  const defaults = typeof DEFAULT_ADDITIONAL_CARDS !== "undefined" ? DEFAULT_ADDITIONAL_CARDS : [];
+  return defaults.some(def => _adminCardIdentityMatches(c, def.name, def.set));
+}
+
+function _isDefaultOversized(c) {
+  const defaults = typeof DEFAULT_OVERSIZED_CARDS !== "undefined" ? DEFAULT_OVERSIZED_CARDS : [];
+  return defaults.some(def => _adminOversizedIdentityMatches(c, def.name, def.fromSet));
+}
+
 function renderAdminCardTypes() {
   const div = document.getElementById("adminCardTypes");
   if (!div) return;
@@ -806,8 +827,8 @@ function renderAdminKnownCards() {
   filterBar.className = "admin-filter-bar";
   const allSets = _adminAllSets();
   if (_adminCardTypeFilter && !allSets.includes(_adminCardTypeFilter)) {
-    _adminCardTypeFilter = "";
-    localStorage.setItem("dcAdminCardFilter", "");
+    _adminCardTypeFilter = DEFAULT_ADMIN_CARD_FILTER;
+    localStorage.setItem("dcAdminCardFilter", DEFAULT_ADMIN_CARD_FILTER);
   }
   const setOpts = [["", "All Sets"], ...allSets.map(s => [s, s])].map(([val, label]) =>
     `<option value="${_ae(val)}" ${val === _adminCardTypeFilter ? "selected" : ""}>${_ae(label)}</option>`
@@ -840,7 +861,8 @@ function renderAdminKnownCards() {
 
   filtered.forEach(({ c, origIdx }) => {
     const row = document.createElement("div");
-    row.className = "admin-row admin-card-row";
+    const protectedCard = _isProtectedKnownCard(c);
+    row.className = `admin-row admin-card-row${protectedCard ? " locked-row" : ""}`;
     const setOptions = [
       !c.set ? `<option value="" disabled selected class="placeholder-opt">— Choose Set —</option>` : "",
       ..._adminAllSets().map(s => `<option value="${_ae(s)}" ${s === c.set ? "selected" : ""}>${_ae(s)}</option>`)
@@ -849,17 +871,25 @@ function renderAdminKnownCards() {
       !c.cardType ? `<option value="" disabled selected class="placeholder-opt">— Choose Card Type —</option>` : "",
       ...[...(App.adminDraft.cardTypes || [])].sort(naturalCompare).map(t => `<option value="${_ae(t)}" ${t === c.cardType ? "selected" : ""}>${_ae(t)}</option>`)
     ].join("");
+    const displayName = c.name ? _ae(c.name) : `<span class="admin-placeholder-text">New card</span>`;
     row.innerHTML = `
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Name:</label>
-      <span class="admin-static admin-card-name">${_ae(c.name)}</span>
+      <span class="admin-static admin-card-name${protectedCard ? " admin-default-text" : ""}" ${c.name ? "" : "data-empty-name=\"true\""}>${displayName}</span>
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Set:</label>
-      <select disabled onchange="draftUpdateKnownCardSet(${origIdx},this.value); markAdminDirty();" class="${!c.set ? 'placeholder-selected' : ''}">${setOptions}</select>
+      ${protectedCard
+        ? `<span class="admin-static admin-card-set admin-default-text">${_ae(c.set || "")}</span>`
+        : `<select disabled onchange="draftUpdateKnownCardSet(${origIdx},this.value); markAdminDirty();" class="${!c.set ? 'placeholder-selected' : ''}">${setOptions}</select>`}
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Card Type:</label>
-      <select disabled onchange="draftUpdateKnownCardType(${origIdx},this.value); markAdminDirty();" class="${!c.cardType ? 'placeholder-selected' : ''}">${cardTypeOptions}</select>
-      <button class="secondary" onclick="_adminStartEdit(this,'cards',${origIdx})">Edit</button>
-      <button class="danger" onclick="_adminConfirmBanCard(this, ${origIdx})">Ban</button>
-      <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Archive</button>
-      <button class="danger" onclick="_adminConfirmDeleteKnownCard(this, ${origIdx})">Remove</button>
+      ${protectedCard
+        ? `<span class="admin-static admin-card-type admin-default-text">${_ae(c.cardType || "")}</span>
+           <span class="admin-lock-badge admin-required-badge">🔒 Default</span>
+           <button class="danger" onclick="_adminConfirmBanCard(this, ${origIdx})">Ban</button>
+           <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Archive</button>`
+        : `<select disabled onchange="draftUpdateKnownCardType(${origIdx},this.value); markAdminDirty();" class="${!c.cardType ? 'placeholder-selected' : ''}">${cardTypeOptions}</select>
+           <button class="secondary" onclick="_adminStartEdit(this,'cards',${origIdx})">Edit</button>
+           <button class="danger" onclick="_adminConfirmBanCard(this, ${origIdx})">Ban</button>
+           <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Archive</button>
+           <button class="danger" onclick="_adminConfirmDeleteKnownCard(this, ${origIdx})">Remove</button>`}
     `;
     cDiv.appendChild(row);
   });
@@ -871,9 +901,9 @@ function _adminConfirmRemoveKnownCard(btn, i) {
 }
 
 function draftAddKnownCard() {
-  _adminCardTypeFilter = ""; // reset filter so new card is visible
-  localStorage.setItem("dcAdminCardFilter", "");
-  App.adminDraft.knownCards.push({ name: "", set: "", cardType: "" });
+  _adminCardTypeFilter = DEFAULT_ADMIN_CARD_FILTER;
+  localStorage.setItem("dcAdminCardFilter", DEFAULT_ADMIN_CARD_FILTER);
+  App.adminDraft.knownCards.push({ name: "", set: DEFAULT_ADMIN_CARD_FILTER, cardType: "Hero" });
   markAdminDirty(); renderAdminKnownCards();
   _autoEditLastRow("adminKnownCards");
 }
@@ -895,6 +925,10 @@ function draftRemoveKnownCard(i) {
 
 function _adminConfirmDeleteKnownCard(btn, i) {
   const card = App.adminDraft.knownCards[i];
+  if (_isProtectedKnownCard(card)) {
+    _showInlineWarning(btn, "Default cards cannot be removed.");
+    return;
+  }
   const name = card?.name || "(blank)";
   _inlineConfirm(btn, `Remove "${name}" entirely? History stays unchanged.`, () => draftDeleteKnownCard(i));
 }
@@ -902,6 +936,7 @@ function _adminConfirmDeleteKnownCard(btn, i) {
 function draftDeleteKnownCard(i) {
   const c = App.adminDraft.knownCards[i];
   if (!c) return;
+  if (_isProtectedKnownCard(c)) return;
   App.adminDraft.knownCards.splice(i, 1);
   App.data.archivedCards = (App.data.archivedCards || []).filter(k => !(k.name === c.name && k.set === c.set));
   App.data.bannedCards = (App.data.bannedCards || []).filter(k => !(k.name === c.name && k.set === c.set));
@@ -995,7 +1030,7 @@ function unbanCard(i) {
 
 /* ===== Known Oversized Cards ===== */
 function _isProtectedOversized(c) {
-  return c?.fromSet === "Original Core Set (2012)" && ["Batman", "Superman"].includes(c.name);
+  return _isDefaultOversized(c);
 }
 
 function _adminAllSets() {
@@ -1071,7 +1106,9 @@ function renderAdminKnownOversized() {
       <span class="admin-static admin-card-name${protectedCard ? " admin-default-text" : ""}">${_ae(c.name)}</span>
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Set:</label>
       ${setField}
-      ${protectedCard ? `<span class="admin-lock-badge admin-required-badge">🔒 Default</span>` : `
+      ${protectedCard ? `<span class="admin-lock-badge admin-required-badge">🔒 Default</span>
+        <button class="danger" onclick="_adminConfirmBanOversized(this, ${origIdx})">Ban</button>
+        <button class="danger" onclick="_adminConfirmRemoveOversized(this, ${origIdx})">Archive</button>` : `
         <button class="secondary" onclick="_adminStartEdit(this,'oversized',${origIdx})">Edit</button>
         <button class="danger" onclick="_adminConfirmBanOversized(this, ${origIdx})">Ban</button>
         <button class="danger" onclick="_adminConfirmRemoveOversized(this, ${origIdx})">Archive</button>
@@ -1083,14 +1120,6 @@ function renderAdminKnownOversized() {
 }
 
 function _adminConfirmRemoveOversized(btn, i) {
-  if (_isProtectedOversized(App.adminDraft.knownOversized[i])) {
-    _showInlineWarning(btn, "Batman and Superman are required defaults.");
-    return;
-  }
-  if (App.adminDraft.knownOversized.length <= 2) {
-    _showInlineWarning(btn, "Minimum 2 oversized cards required.");
-    return;
-  }
   const name = App.adminDraft.knownOversized[i]?.name || "(blank)";
   _inlineConfirm(btn, `Archive "${name}"?`, () => draftRemoveOversized(i));
 }
@@ -1107,8 +1136,6 @@ function draftUpdateOversizedName(i, v) { App.adminDraft.knownOversized[i].name 
 function draftUpdateOversizedSet(i, v)  { App.adminDraft.knownOversized[i].fromSet = v; markAdminDirty(); }
 
 function draftRemoveOversized(i) {
-  if (_isProtectedOversized(App.adminDraft.knownOversized[i])) return;
-  if (App.adminDraft.knownOversized.length <= 2) return;
   const c = App.adminDraft.knownOversized[i];
   if (c && c.name) {
     App.data.archivedOversized = App.data.archivedOversized || [];
@@ -1122,7 +1149,7 @@ function draftRemoveOversized(i) {
 function _adminConfirmDeleteOversized(btn, i) {
   const c = App.adminDraft.knownOversized[i];
   if (_isProtectedOversized(c)) {
-    _showInlineWarning(btn, "Batman and Superman are required defaults.");
+    _showInlineWarning(btn, "Default oversized cards cannot be removed.");
     return;
   }
   if (App.adminDraft.knownOversized.length <= 2) {
@@ -1148,21 +1175,11 @@ function draftDeleteOversized(i) {
 }
 
 function _adminConfirmBanOversized(btn, i) {
-  if (_isProtectedOversized(App.adminDraft.knownOversized[i])) {
-    _showInlineWarning(btn, "Batman and Superman are required defaults.");
-    return;
-  }
-  if (App.adminDraft.knownOversized.length <= 2) {
-    _showInlineWarning(btn, "Minimum 2 active oversized cards required.");
-    return;
-  }
   const name = App.adminDraft.knownOversized[i]?.name || "(blank)";
   _inlineConfirm(btn, `Ban "${name}"? It won't be usable in new games.`, () => draftBanOversized(i));
 }
 
 function draftBanOversized(i) {
-  if (_isProtectedOversized(App.adminDraft.knownOversized[i])) return;
-  if (App.adminDraft.knownOversized.length <= 2) return;
   const c = App.adminDraft.knownOversized[i];
   if (c && c.name) {
     App.data.bannedOversized = App.data.bannedOversized || [];
@@ -1187,6 +1204,10 @@ function unbanOversized(i) {
 function _adminConfirmDeleteArchivedCard(btn, i) {
   const entry = App.data.archivedCards[i];
   if (!entry) return;
+  if (_isProtectedKnownCard(entry)) {
+    _showInlineWarning(btn, "Default cards cannot be removed.");
+    return;
+  }
   _inlineConfirm(btn, `Remove "${entry.name}" entirely? History stays unchanged.`, () => {
     App.data.archivedCards.splice(i, 1);
     saveData(); renderAdminArchived();
@@ -1196,6 +1217,10 @@ function _adminConfirmDeleteArchivedCard(btn, i) {
 function _adminConfirmDeleteBannedCard(btn, i) {
   const entry = App.data.bannedCards[i];
   if (!entry) return;
+  if (_isProtectedKnownCard(entry)) {
+    _showInlineWarning(btn, "Default cards cannot be removed.");
+    return;
+  }
   _inlineConfirm(btn, `Remove "${entry.name}" entirely? History stays unchanged.`, () => {
     App.data.bannedCards.splice(i, 1);
     saveData(); renderAdminBannedCards();
@@ -1206,7 +1231,7 @@ function _adminConfirmDeleteArchivedOversized(btn, i) {
   const entry = App.data.archivedOversized[i];
   if (!entry) return;
   if (_isProtectedOversized(entry)) {
-    _showInlineWarning(btn, "Batman and Superman are required defaults.");
+    _showInlineWarning(btn, "Default oversized cards cannot be removed.");
     return;
   }
   _inlineConfirm(btn, `Remove "${entry.name}" entirely? History stays unchanged.`, () => {
@@ -1219,7 +1244,7 @@ function _adminConfirmDeleteBannedOversized(btn, i) {
   const entry = App.data.bannedOversized[i];
   if (!entry) return;
   if (_isProtectedOversized(entry)) {
-    _showInlineWarning(btn, "Batman and Superman are required defaults.");
+    _showInlineWarning(btn, "Default oversized cards cannot be removed.");
     return;
   }
   _inlineConfirm(btn, `Remove "${entry.name}" entirely? History stays unchanged.`, () => {

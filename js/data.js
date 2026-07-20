@@ -4,7 +4,7 @@
 
 const STORAGE_KEY = "dcData";
 const DATA_FILE   = "dc_tracker_data.json";
-const APP_VERSION = "0.9.0-beta";
+const APP_VERSION = "0.9.1-beta";
 const EXPORT_VERSION = 2;
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 const NO_IMPORT_COUNT_LIMIT = Number.MAX_SAFE_INTEGER;
@@ -14,7 +14,7 @@ const IMPORT_LIMITS = {
   cards: NO_IMPORT_COUNT_LIMIT,
   cardTypes: 100,
   history: NO_IMPORT_COUNT_LIMIT,
-  playersPerGame: 5,
+  playersPerGame: 6,
   additionalPerGame: NO_IMPORT_COUNT_LIMIT,
   renames: NO_IMPORT_COUNT_LIMIT,
   name: 30,
@@ -27,6 +27,7 @@ const DEFAULT_CARD_TYPES = [
   "Equipment",
   "Hero",
   "Location",
+  "Multiverse Location",
   "Starter",
   "Super Power",
   "Super-Hero",
@@ -35,6 +36,13 @@ const DEFAULT_CARD_TYPES = [
 ];
 const DEFAULT_ADDITIONAL_CARDS = [
   { name: "Gotham City Docks", set: "Original Core Set (2012)", cardType: "Location" },
+  { name: "Metropolis", set: "Multiverse", cardType: "Multiverse Location" },
+  { name: "Flashpoint Gotham City", set: "Multiverse", cardType: "Multiverse Location" },
+  { name: "Fawcett City", set: "Multiverse", cardType: "Multiverse Location" },
+  { name: "30th Century Metropolis", set: "Multiverse", cardType: "Multiverse Location" },
+  { name: "Gotham City", set: "Multiverse", cardType: "Multiverse Location" },
+  { name: "Hub City", set: "Multiverse", cardType: "Multiverse Location" },
+  { name: "Earth-2", set: "Multiverse", cardType: "Multiverse Location" },
 ];
 const DEFAULT_OVERSIZED_CARDS = [
   { name: "Batman", fromSet: "Original Core Set (2012)" },
@@ -121,16 +129,22 @@ const DEFAULT_DATA = {
   crossovers:       JSON.parse(JSON.stringify(DEFAULT_CROSSOVERS)),
   knownCards:       JSON.parse(JSON.stringify(DEFAULT_ADDITIONAL_CARDS)),
   knownOversized:   JSON.parse(JSON.stringify(DEFAULT_OVERSIZED_CARDS)),
+  knownMultiverseLocations: [],
+  knownMultiverseChampions: [],
   cardTypes:        [...DEFAULT_CARD_TYPES],
   archivedPlayers:  [],
   archivedGames:     [],
   archivedCrossovers:[],
   archivedCards:     [],
   archivedOversized: [],
+  archivedMultiverseLocations: [],
+  archivedMultiverseChampions: [],
   bannedCards:       [],
   bannedOversized:   [],
   removedCards:      [],
   removedOversized:  [],
+  removedMultiverseLocations: [],
+  removedMultiverseChampions: [],
   removedPlayers:    [],
   history:          [],
   nextGameNum:      1,
@@ -213,6 +227,8 @@ function _normalise(d) {
   if (!d.history)             d.history             = [];
   if (!d.knownCards)          d.knownCards          = [];
   if (!d.knownOversized)      d.knownOversized      = [];
+  if (!d.knownMultiverseLocations) d.knownMultiverseLocations = [];
+  if (!d.knownMultiverseChampions) d.knownMultiverseChampions = [];
   if (!d.cardTypes)           d.cardTypes           = [];
   if (!d.archivedPlayers)     d.archivedPlayers     = [];
   if (!d.renames)             d.renames             = [];
@@ -225,12 +241,18 @@ function _normalise(d) {
   if (!d.archivedCrossovers)  d.archivedCrossovers  = [];
   if (!d.archivedCards)       d.archivedCards       = [];
   if (!d.archivedOversized)   d.archivedOversized   = [];
+  if (!d.archivedMultiverseLocations) d.archivedMultiverseLocations = [];
+  if (!d.archivedMultiverseChampions) d.archivedMultiverseChampions = [];
   if (!d.bannedCards)         d.bannedCards         = [];
   if (!d.bannedOversized)     d.bannedOversized     = [];
   if (!d.removedCards)        d.removedCards        = [];
   if (!d.removedOversized)    d.removedOversized    = [];
+  if (!d.removedMultiverseLocations) d.removedMultiverseLocations = [];
+  if (!d.removedMultiverseChampions) d.removedMultiverseChampions = [];
   if (!d.removedPlayers)      d.removedPlayers      = [];
+  _normaliseMultiverseLists(d);
   _normaliseAdditionalCards(d);
+  _migrateMultiverseLibraries(d);
   d.knownCards = (d.knownCards || []).filter(c =>
     !_cardExists(d.archivedCards, c.name, c.set) &&
     !_cardExists(d.bannedCards, c.name, c.set) &&
@@ -255,8 +277,13 @@ function _normalise(d) {
   d.archivedPlayers = d.archivedPlayers.map(a => typeof a === "string" ? { name: a } : a);
   d.history.forEach((h, i) => {
     if (!h.gameNum) h.gameNum = i + 1;
+    if (h.isMultiverse === undefined) h.isMultiverse = false;
+    if (h.isMultiverse && !h.multiverseStyle) h.multiverseStyle = "standard";
+    if (h.isMultiverse && !Array.isArray(h.multiverseBaseSets)) h.multiverseBaseSets = [];
+    if (h.isMultiverse) h.game = h.multiverseStyle === "worldHopper" ? "Multiverse (World Hopper)" : "Multiverse";
     if (h.isRivals === undefined)
       h.isRivals = !h.isCrisis && ((d.games || []).find(g => g.name === h.game)?.isRivals || false);
+    if (!h.isCrisis && !h.isRivals && !h.isMultiverse) applyStandardGameResults(h.players || []);
   });
   d.games = _dedupeNamedObjects(d.games);
   d.archivedGames = _dedupeNamedObjects(d.archivedGames);
@@ -291,6 +318,28 @@ function _normalise(d) {
     if (!d.cardTypes.some(t => t.toLowerCase() === type.toLowerCase())) d.cardTypes.push(type);
   });
   d.cardTypes.sort(naturalCompare);
+
+  DEFAULT_ADDITIONAL_CARDS.forEach(def => {
+    d.removedCards = (d.removedCards || []).filter(c => !_cardExists([c], def.name, def.set));
+    const archived = _cardExists(d.archivedCards, def.name, def.set);
+    const banned = _cardExists(d.bannedCards, def.name, def.set);
+    if (archived || banned) return;
+    const active = (d.knownCards || []).find(c => _cardExists([c], def.name, def.set));
+    if (active) {
+      active.cardType = def.cardType;
+      active.set = def.set;
+    } else {
+      d.knownCards.push({ ...def });
+    }
+  });
+
+  DEFAULT_OVERSIZED_CARDS.forEach(def => {
+    d.removedOversized = (d.removedOversized || []).filter(c => !_oversizedExists([c], def.name, def.fromSet));
+    const archived = _oversizedExists(d.archivedOversized, def.name, def.fromSet);
+    const banned = _oversizedExists(d.bannedOversized, def.name, def.fromSet);
+    if (archived || banned) return;
+    if (!_oversizedExists(d.knownOversized, def.name, def.fromSet)) d.knownOversized.push({ ...def });
+  });
 
   _restoreLibrariesFromHistory(d);
   _renumberHistoryByDate(d);
@@ -331,7 +380,66 @@ function _normaliseAdditionalCards(d) {
   d.removedCards = (d.removedCards || []).map(migrate);
   (d.history || []).forEach(h => {
     h.additional = (h.additional || []).map(migrate);
+    if (h.isMultiverse) {
+      h.additional = h.additional.filter(c => !isMultiverseLocationCard(c));
+    }
   });
+}
+
+function _normaliseMultiverseLists(d) {
+  const named = c => typeof c === "string" ? { name: c } : { ...c, name: c?.name || "" };
+  const champion = c => ({ ...named(c), fromSet: c?.fromSet || c?.set || "Multiverse" });
+  d.knownMultiverseLocations = (d.knownMultiverseLocations || []).map(named).filter(c => c.name);
+  d.archivedMultiverseLocations = (d.archivedMultiverseLocations || []).map(named).filter(c => c.name);
+  d.removedMultiverseLocations = (d.removedMultiverseLocations || []).map(named).filter(c => c.name);
+  d.knownMultiverseChampions = (d.knownMultiverseChampions || []).map(champion).filter(c => c.name);
+  d.archivedMultiverseChampions = (d.archivedMultiverseChampions || []).map(champion).filter(c => c.name);
+  d.removedMultiverseChampions = (d.removedMultiverseChampions || []).map(champion).filter(c => c.name);
+}
+
+function _migrateMultiverseLibraries(d) {
+  (d.knownMultiverseLocations || []).forEach(loc => {
+    const set = loc.set || "Multiverse";
+    if (loc.name && !_cardExists(d.knownCards, loc.name, set)) {
+      d.knownCards.push({ name: loc.name, set, cardType: "Multiverse Location" });
+    }
+  });
+  (d.archivedMultiverseLocations || []).forEach(loc => {
+    const set = loc.set || "Multiverse";
+    if (loc.name && !_cardExists(d.archivedCards, loc.name, set) && !_cardExists(d.knownCards, loc.name, set)) {
+      d.archivedCards.push({ name: loc.name, set, cardType: "Multiverse Location" });
+    }
+  });
+  (d.removedMultiverseLocations || []).forEach(loc => {
+    const set = loc.set || "Multiverse";
+    if (loc.name && !_cardExists(d.removedCards, loc.name, set) && !_cardExists(d.knownCards, loc.name, set)) {
+      d.removedCards.push({ name: loc.name, set, cardType: "Multiverse Location" });
+    }
+  });
+  (d.knownMultiverseChampions || []).forEach(ch => {
+    const fromSet = ch.fromSet || "Multiverse";
+    if (ch.name && !_oversizedExists(d.knownOversized, ch.name, fromSet)) {
+      d.knownOversized.push({ name: ch.name, fromSet });
+    }
+  });
+  (d.archivedMultiverseChampions || []).forEach(ch => {
+    const fromSet = ch.fromSet || "Multiverse";
+    if (ch.name && !_oversizedExists(d.archivedOversized, ch.name, fromSet) && !_oversizedExists(d.knownOversized, ch.name, fromSet)) {
+      d.archivedOversized.push({ name: ch.name, fromSet });
+    }
+  });
+  (d.removedMultiverseChampions || []).forEach(ch => {
+    const fromSet = ch.fromSet || "Multiverse";
+    if (ch.name && !_oversizedExists(d.removedOversized, ch.name, fromSet) && !_oversizedExists(d.knownOversized, ch.name, fromSet)) {
+      d.removedOversized.push({ name: ch.name, fromSet });
+    }
+  });
+  d.knownMultiverseLocations = [];
+  d.archivedMultiverseLocations = [];
+  d.removedMultiverseLocations = [];
+  d.knownMultiverseChampions = [];
+  d.archivedMultiverseChampions = [];
+  d.removedMultiverseChampions = [];
 }
 
 function _inferRivalsCharacters(name) {
@@ -365,6 +473,11 @@ function _cardExists(list, name, set) {
   );
 }
 
+function isMultiverseLocationCard(card) {
+  if (!card || typeof card === "string") return false;
+  return String(card.cardType || "").trim().toLowerCase() === "multiverse location";
+}
+
 function _oversizedExists(list, name, fromSet) {
   return (list || []).some(k =>
     (k.name || "").toLowerCase() === (name || "").toLowerCase() &&
@@ -372,9 +485,26 @@ function _oversizedExists(list, name, fromSet) {
   );
 }
 
+function applyStandardGameResults(players) {
+  const list = players || [];
+  if (!list.length) return list;
+  const betterThan = (a, b) =>
+    (a.score || 0) > (b.score || 0) ||
+    ((a.score || 0) === (b.score || 0) && (a.nemesis || 0) > (b.nemesis || 0));
+  const topScore = Math.max(...list.map(p => p.score || 0));
+  const topNemesis = Math.max(...list.filter(p => (p.score || 0) === topScore).map(p => p.nemesis || 0));
+  const topPlayers = list.filter(p => (p.score || 0) === topScore && (p.nemesis || 0) === topNemesis);
+  list.forEach(p => {
+    p.place = list.filter(other => betterThan(other, p)).length + 1;
+    if (p.place === 1) p.result = topPlayers.length > 1 ? "Tie" : "Win";
+    else p.result = "Loss";
+  });
+  return list;
+}
+
 function _restoreLibrariesFromHistory(d) {
   (d.history || []).forEach(h => {
-    if (h.game && !d.games.some(g => g.name === h.game) && !d.archivedGames.some(g => g.name === h.game)) {
+    if (!h.isMultiverse && h.game && !d.games.some(g => g.name === h.game) && !d.archivedGames.some(g => g.name === h.game)) {
       d.games.push(_normaliseRivalsCharacters({ name: h.game, isRivals: !!h.isRivals }));
     }
     if (h.cross && !d.crossovers.some(c => c.name === h.cross) && !d.archivedCrossovers.some(c => c.name === h.cross)) {
@@ -385,6 +515,7 @@ function _restoreLibrariesFromHistory(d) {
       const name = (typeof c === "string" ? c : c.name || "").trim();
       const set = (typeof c === "string" ? "Other" : c.set || c.type || "Other").trim() || "Other";
       const cardType = (typeof c === "string" ? "Hero" : c.cardType || "Hero").trim() || "Hero";
+      if (cardType.toLowerCase() === "multiverse location") return;
       if (!name) return;
       const known = _cardExists(d.knownCards, name, set);
       const archived = _cardExists(d.archivedCards, name, set);
@@ -394,6 +525,26 @@ function _restoreLibrariesFromHistory(d) {
     });
 
     (h.players || []).forEach(p => {
+      const location = (p.multiverseLocation || "").trim();
+      const locationSet = (p.multiverseLocationSet || "Multiverse").trim() || "Multiverse";
+      if (location &&
+          !_cardExists(d.knownCards, location, locationSet) &&
+          !_cardExists(d.archivedCards, location, locationSet) &&
+          !_cardExists(d.bannedCards, location, locationSet) &&
+          !_cardExists(d.removedCards, location, locationSet)) {
+        d.knownCards.push({ name: location, set: locationSet, cardType: "Multiverse Location" });
+      }
+      (p.multiverseChampions || []).forEach(ch => {
+        const chName = (ch.name || "").trim();
+        const fromSet = (ch.fromSet || ch.set || "Multiverse").trim() || "Multiverse";
+        if (chName &&
+            !_oversizedExists(d.knownOversized, chName, fromSet) &&
+            !_oversizedExists(d.archivedOversized, chName, fromSet) &&
+            !_oversizedExists(d.bannedOversized, chName, fromSet) &&
+            !_oversizedExists(d.removedOversized, chName, fromSet)) {
+          d.knownOversized.push({ name: chName, fromSet });
+        }
+      });
       const name = (p.oversizedCard || p.heroUsed || "").trim();
       const fromSet = (p.oversizedFrom || p.heroFrom || "").trim();
       if (!name || !fromSet) return;
@@ -414,9 +565,10 @@ function _buildExportStatsSnapshot() {
     note: "Stats are derived from history when the app runs; this snapshot is included for export readability.",
     totals: {
       totalLogged: history.length,
-      normalGames: history.filter(h => !h.isCrisis && !h.isRivals).length,
+      normalGames: history.filter(h => !h.isCrisis && !h.isRivals && !h.isMultiverse).length,
       rivalsGames: history.filter(h => h.isRivals).length,
       crisisGames: history.filter(h => h.isCrisis).length,
+      multiverseGames: history.filter(h => h.isMultiverse).length,
       crisisWins: history.filter(h => h.isCrisis && h.teamWon).length,
       crisisLosses: history.filter(h => h.isCrisis && !h.teamWon).length,
     },
@@ -537,7 +689,10 @@ function _commitImportedData(prepared) {
 }
 
 function _countAllCards(data) {
-  return (data.knownCards || []).length + (data.knownOversized || []).length;
+  return (data.knownCards || []).length +
+    (data.knownOversized || []).length +
+    (data.knownMultiverseLocations || []).length +
+    (data.knownMultiverseChampions || []).length;
 }
 
 function _countBannedContent(data) {
@@ -549,13 +704,17 @@ function _countArchivedContent(data) {
     (data.archivedGames || []).length +
     (data.archivedCrossovers || []).length +
     (data.archivedCards || []).length +
-    (data.archivedOversized || []).length;
+    (data.archivedOversized || []).length +
+    (data.archivedMultiverseLocations || []).length +
+    (data.archivedMultiverseChampions || []).length;
 }
 
 function _countRemovedContent(data) {
   return (data.removedPlayers || []).length +
     (data.removedCards || []).length +
-    (data.removedOversized || []).length;
+    (data.removedOversized || []).length +
+    (data.removedMultiverseLocations || []).length +
+    (data.removedMultiverseChampions || []).length;
 }
 
 function _dataLoadSummary(data) {
@@ -679,6 +838,21 @@ function _cleanOversized(item, idx, listName) {
   };
 }
 
+function _cleanMultiverseLocation(item, idx, listName) {
+  const obj = typeof item === "string" ? { name: item } : _importObject(item, `${listName}[${idx}]`);
+  return {
+    name: _importString(obj.name, `${listName}[${idx}].name`, IMPORT_LIMITS.name),
+  };
+}
+
+function _cleanMultiverseChampion(item, idx, listName) {
+  const obj = typeof item === "string" ? { name: item, fromSet: "Multiverse" } : _importObject(item, `${listName}[${idx}]`);
+  return {
+    name: _importString(obj.name, `${listName}[${idx}].name`, IMPORT_LIMITS.name),
+    fromSet: _importString(obj.fromSet || obj.set, `${listName}[${idx}].fromSet`, IMPORT_LIMITS.setName, "Multiverse"),
+  };
+}
+
 function _cleanArchivedPlayer(item, idx) {
   if (typeof item === "string") return { name: _importString(item, `archivedPlayers[${idx}]`, IMPORT_LIMITS.playerName) };
   const obj = _importObject(item, `archivedPlayers[${idx}]`);
@@ -687,6 +861,9 @@ function _cleanArchivedPlayer(item, idx) {
 
 function _cleanHistoryPlayer(item, idx, gameIdx) {
   const obj = _importObject(item, `history[${gameIdx}].players[${idx}]`);
+  const champions = _importArray(obj, "multiverseChampions", 3).map((ch, chIdx) =>
+    _cleanMultiverseChampion(ch, chIdx, `history[${gameIdx}].players[${idx}].multiverseChampions`)
+  );
   return {
     name: _importString(obj.name, `history[${gameIdx}].players[${idx}].name`, IMPORT_LIMITS.playerName),
     oversizedCard: _importString(obj.oversizedCard || obj.heroUsed, `history[${gameIdx}].players[${idx}].oversizedCard`, IMPORT_LIMITS.name),
@@ -695,6 +872,11 @@ function _cleanHistoryPlayer(item, idx, gameIdx) {
     score: _importInt(obj.score, `history[${gameIdx}].players[${idx}].score`, 0, 0, 9999),
     deckCount: _importInt(obj.deckCount, `history[${gameIdx}].players[${idx}].deckCount`, 0, 0, 9999),
     nemesis: _importInt(obj.nemesis, `history[${gameIdx}].players[${idx}].nemesis`, 0, 0, 999),
+    multiverseLocation: _importString(obj.multiverseLocation, `history[${gameIdx}].players[${idx}].multiverseLocation`, IMPORT_LIMITS.name),
+    multiverseLocationSet: _importString(obj.multiverseLocationSet, `history[${gameIdx}].players[${idx}].multiverseLocationSet`, IMPORT_LIMITS.setName, "Multiverse"),
+    multiverseLocationCardType: _importString(obj.multiverseLocationCardType, `history[${gameIdx}].players[${idx}].multiverseLocationCardType`, IMPORT_LIMITS.name, "Multiverse Location"),
+    multiverseChampions: champions,
+    championsRemaining: _importInt(obj.championsRemaining, `history[${gameIdx}].players[${idx}].championsRemaining`, 0, 0, 3),
     result: _importString(obj.result, `history[${gameIdx}].players[${idx}].result`, 10),
     place: _importInt(obj.place, `history[${gameIdx}].players[${idx}].place`, 0, 0, 5),
   };
@@ -712,6 +894,14 @@ function _cleanHistoryEntry(item, idx) {
     cross: _importString(obj.cross, `history[${idx}].cross`, IMPORT_LIMITS.setName),
     isCrisis: _importBool(obj.isCrisis, `history[${idx}].isCrisis`, false),
     isRivals: _importBool(obj.isRivals, `history[${idx}].isRivals`, false),
+    isMultiverse: _importBool(obj.isMultiverse, `history[${idx}].isMultiverse`, false),
+    multiverseStyle: _importString(obj.multiverseStyle, `history[${idx}].multiverseStyle`, 20, "standard"),
+    multiverseChampionMode: _importString(obj.multiverseChampionMode, `history[${idx}].multiverseChampionMode`, 20),
+    multiverseWinCondition: _importString(obj.multiverseWinCondition, `history[${idx}].multiverseWinCondition`, 30),
+    multiverseEndingCard: _importString(obj.multiverseEndingCard, `history[${idx}].multiverseEndingCard`, IMPORT_LIMITS.name),
+    multiverseBaseSets: _cleanStringArray(obj, "multiverseBaseSets", 50, IMPORT_LIMITS.setName),
+    multiverseEventSets: _cleanStringArray(obj, "multiverseEventSets", 50, IMPORT_LIMITS.setName),
+    multiverseEventCards: _cleanStringArray(obj, "multiverseEventCards", 50, IMPORT_LIMITS.name),
     teamWon: _importBool(obj.teamWon, `history[${idx}].teamWon`, false),
     teamNemesis: _importInt(obj.teamNemesis, `history[${idx}].teamNemesis`, 0, 0, 999),
     players,
@@ -748,16 +938,22 @@ function _sanitizeImportedData(raw) {
     crossovers: _importArray(obj, "crossovers", IMPORT_LIMITS.sets).map(_cleanCrossover),
     knownCards: _importArray(obj, "knownCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "knownCards")),
     knownOversized: _importArray(obj, "knownOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "knownOversized")),
+    knownMultiverseLocations: _importArray(obj, "knownMultiverseLocations", IMPORT_LIMITS.cards).map((item, idx) => _cleanMultiverseLocation(item, idx, "knownMultiverseLocations")),
+    knownMultiverseChampions: _importArray(obj, "knownMultiverseChampions", IMPORT_LIMITS.cards).map((item, idx) => _cleanMultiverseChampion(item, idx, "knownMultiverseChampions")),
     cardTypes: _cleanStringArray(obj, "cardTypes", IMPORT_LIMITS.cardTypes, IMPORT_LIMITS.name),
     archivedPlayers: _importArray(obj, "archivedPlayers", IMPORT_LIMITS.players).map(_cleanArchivedPlayer),
     archivedGames: _importArray(obj, "archivedGames", IMPORT_LIMITS.sets).map(_cleanGame),
     archivedCrossovers: _importArray(obj, "archivedCrossovers", IMPORT_LIMITS.sets).map(_cleanCrossover),
     archivedCards: _importArray(obj, "archivedCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "archivedCards")),
     archivedOversized: _importArray(obj, "archivedOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "archivedOversized")),
+    archivedMultiverseLocations: _importArray(obj, "archivedMultiverseLocations", IMPORT_LIMITS.cards).map((item, idx) => _cleanMultiverseLocation(item, idx, "archivedMultiverseLocations")),
+    archivedMultiverseChampions: _importArray(obj, "archivedMultiverseChampions", IMPORT_LIMITS.cards).map((item, idx) => _cleanMultiverseChampion(item, idx, "archivedMultiverseChampions")),
     bannedCards: _importArray(obj, "bannedCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "bannedCards")),
     bannedOversized: _importArray(obj, "bannedOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "bannedOversized")),
     removedCards: _importArray(obj, "removedCards", IMPORT_LIMITS.cards).map((item, idx) => _cleanCard(item, idx, "removedCards")),
     removedOversized: _importArray(obj, "removedOversized", IMPORT_LIMITS.cards).map((item, idx) => _cleanOversized(item, idx, "removedOversized")),
+    removedMultiverseLocations: _importArray(obj, "removedMultiverseLocations", IMPORT_LIMITS.cards).map((item, idx) => _cleanMultiverseLocation(item, idx, "removedMultiverseLocations")),
+    removedMultiverseChampions: _importArray(obj, "removedMultiverseChampions", IMPORT_LIMITS.cards).map((item, idx) => _cleanMultiverseChampion(item, idx, "removedMultiverseChampions")),
     removedPlayers: _importArray(obj, "removedPlayers", IMPORT_LIMITS.players).map(_cleanArchivedPlayer),
     deletedGames: _importArray(obj, "deletedGames", IMPORT_LIMITS.sets).map((item, idx) =>
       _importString(item, `deletedGames[${idx}]`, IMPORT_LIMITS.setName)
@@ -779,6 +975,8 @@ function _sanitizeImportedData(raw) {
   _ensureUniqueImportItems(cleaned.cardTypes, "card type", t => t.toLowerCase());
   _ensureUniqueImportItems(cleaned.knownCards, "additional card", c => `${c.name.toLowerCase()}|${c.set}`);
   _ensureUniqueImportItems(cleaned.knownOversized, "oversized card", c => `${c.name.toLowerCase()}|${c.fromSet}`);
+  _ensureUniqueImportItems(cleaned.knownMultiverseLocations, "Multiverse location", c => c.name.toLowerCase());
+  _ensureUniqueImportItems(cleaned.knownMultiverseChampions, "Multiverse champion", c => c.name.toLowerCase());
   return cleaned;
 }
 

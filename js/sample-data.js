@@ -1,7 +1,6 @@
-/**
+/*
  * sample-data.js — bundled demo data fallback for local file usage
  */
-
 const DECKLEDGER_SAMPLE_DATA = {
   "app": "dc-deck-building-tracker",
   "version": 2,
@@ -136,12 +135,17 @@ const DECKLEDGER_SAMPLE_DATA = {
       {
         "name": "Martian Manhunter",
         "fromSet": "Promo"
+      },
+      {
+        "name": "The Flash",
+        "fromSet": "Original Core Set (2012)"
       }
     ],
     "cardTypes": [
       "Equipment",
       "Hero",
       "Location",
+      "Multiverse Location",
       "Starter",
       "Super Power",
       "Super-Hero",
@@ -151,13 +155,7 @@ const DECKLEDGER_SAMPLE_DATA = {
     "archivedPlayers": [],
     "archivedGames": [],
     "archivedCrossovers": [],
-    "archivedCards": [
-      {
-        "name": "Gotham City Docks",
-        "set": "Original Core Set (2012)",
-        "cardType": "Location"
-      }
-    ],
+    "archivedCards": [],
     "archivedOversized": [
       {
         "name": "Wonder Woman",
@@ -277,6 +275,83 @@ const DECKLEDGER_SAMPLE_DATA = {
       },
       {
         "gameNum": 3,
+        "game": "Multiverse",
+        "cross": "None",
+        "isCrisis": false,
+        "isRivals": false,
+        "isMultiverse": true,
+        "multiverseWinCondition": "lastPlayerStanding",
+        "multiverseEventSets": [
+          "Heroes Unite (2014)",
+          "Forever Evil (2014)"
+        ],
+        "players": [
+          {
+            "name": "Jack",
+            "oversizedCard": "Batman",
+            "oversizedFrom": "Original Core Set (2012)",
+            "multiverseLocation": "Metropolis",
+            "multiverseLocationSet": "Multiverse",
+            "multiverseLocationCardType": "Multiverse Location",
+            "multiverseChampions": [
+              {
+                "name": "Wonder Woman",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "The Flash",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Aquaman",
+                "fromSet": "Original Core Set (2012)"
+              }
+            ],
+            "championsRemaining": 1,
+            "score": 0,
+            "nemesis": 0,
+            "result": "Win",
+            "place": 1
+          },
+          {
+            "name": "Jill",
+            "oversizedCard": "Superman",
+            "oversizedFrom": "Original Core Set (2012)",
+            "multiverseLocation": "Gotham City",
+            "multiverseLocationSet": "Multiverse",
+            "multiverseLocationCardType": "Multiverse Location",
+            "multiverseChampions": [
+              {
+                "name": "Cyborg",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Green Lantern",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Martian Manhunter",
+                "fromSet": "Promo"
+              }
+            ],
+            "championsRemaining": 0,
+            "score": 0,
+            "nemesis": 0,
+            "result": "Loss",
+            "place": 2
+          }
+        ],
+        "additional": [],
+        "date": "2026-01-15",
+        "dateSort": 20260115,
+        "comment": "Multiverse demo ending by last player standing.",
+        "multiverseStyle": "standard",
+        "multiverseBaseSets": [
+          "Original Core Set (2012)"
+        ]
+      },
+      {
+        "gameNum": 4,
         "game": "Forever Evil (2014)",
         "cross": "None",
         "isCrisis": false,
@@ -288,7 +363,7 @@ const DECKLEDGER_SAMPLE_DATA = {
             "oversizedFrom": "Promo",
             "score": 51,
             "nemesis": 5,
-            "result": "Tie",
+            "result": "Win",
             "place": 1
           },
           {
@@ -297,7 +372,7 @@ const DECKLEDGER_SAMPLE_DATA = {
             "oversizedFrom": "Original Core Set (2012)",
             "score": 51,
             "nemesis": 4,
-            "result": "Tie",
+            "result": "Loss",
             "place": 2
           },
           {
@@ -315,7 +390,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "dateSort": 20260118
       },
       {
-        "gameNum": 4,
+        "gameNum": 5,
         "game": "Rivals 1: Batman vs Joker (2014)",
         "cross": "None",
         "isCrisis": false,
@@ -345,7 +420,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "dateSort": 20260125
       },
       {
-        "gameNum": 5,
+        "gameNum": 6,
         "game": "Original Core Set (2012)",
         "cross": "Crisis Expansion Pack 1 (2014)",
         "isCrisis": true,
@@ -386,7 +461,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "comment": "Crisis win with the full table."
       },
       {
-        "gameNum": 6,
+        "gameNum": 7,
         "game": "Teen Titans (2015)",
         "cross": "Crossover Pack 5: The Rogues (2017)",
         "isCrisis": false,
@@ -425,7 +500,84 @@ const DECKLEDGER_SAMPLE_DATA = {
         "dateSort": 20260208
       },
       {
-        "gameNum": 7,
+        "gameNum": 8,
+        "game": "Multiverse",
+        "cross": "None",
+        "isCrisis": false,
+        "isRivals": false,
+        "isMultiverse": true,
+        "multiverseWinCondition": "deimos",
+        "multiverseEventSets": [
+          "Dark Nights: Metal (2018)",
+          "Crossover Pack 10: Flashpoint (2024)"
+        ],
+        "players": [
+          {
+            "name": "Harry",
+            "oversizedCard": "Wonder Woman",
+            "oversizedFrom": "Original Core Set (2012)",
+            "multiverseLocation": "Earth-2",
+            "multiverseLocationSet": "Multiverse",
+            "multiverseLocationCardType": "Multiverse Location",
+            "multiverseChampions": [
+              {
+                "name": "Batman",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Superman",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Aquaman",
+                "fromSet": "Original Core Set (2012)"
+              }
+            ],
+            "championsRemaining": 1,
+            "score": 62,
+            "nemesis": 0,
+            "result": "Win",
+            "place": 1
+          },
+          {
+            "name": "Sally",
+            "oversizedCard": "The Joker",
+            "oversizedFrom": "Promo",
+            "multiverseLocation": "Hub City",
+            "multiverseLocationSet": "Multiverse",
+            "multiverseLocationCardType": "Multiverse Location",
+            "multiverseChampions": [
+              {
+                "name": "The Flash",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Cyborg",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Green Lantern",
+                "fromSet": "Original Core Set (2012)"
+              }
+            ],
+            "championsRemaining": 0,
+            "score": 55,
+            "nemesis": 0,
+            "result": "Loss",
+            "place": 2
+          }
+        ],
+        "additional": [],
+        "date": "2026-02-12",
+        "dateSort": 20260212,
+        "comment": "Multiverse demo ending by VP after Deimos.",
+        "multiverseStyle": "standard",
+        "multiverseBaseSets": [
+          "Original Core Set (2012)"
+        ]
+      },
+      {
+        "gameNum": 9,
         "game": "Dark Nights: Metal (2018)",
         "cross": "Crossover Pack 10: Flashpoint (2024)",
         "isCrisis": false,
@@ -473,7 +625,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "dateSort": 20260215
       },
       {
-        "gameNum": 8,
+        "gameNum": 10,
         "game": "Rivals 2: Green Lantern vs Sinestro (2018)",
         "cross": "None",
         "isCrisis": false,
@@ -503,7 +655,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "dateSort": 20260222
       },
       {
-        "gameNum": 9,
+        "gameNum": 11,
         "game": "Justice League: Dark (2024)",
         "cross": "Crisis Expansion Pack 2 (2015)",
         "isCrisis": true,
@@ -538,7 +690,7 @@ const DECKLEDGER_SAMPLE_DATA = {
         "dateSort": 20260301
       },
       {
-        "gameNum": 10,
+        "gameNum": 12,
         "game": "Injustice (2023)",
         "cross": "Justice League Dark Expansion (2024)",
         "isCrisis": false,
@@ -590,9 +742,137 @@ const DECKLEDGER_SAMPLE_DATA = {
         ],
         "date": "2026-03-08",
         "dateSort": 20260308
+      },
+      {
+        "gameNum": 13,
+        "game": "Arkham Asylum (2025)",
+        "cross": "None",
+        "isCrisis": false,
+        "isRivals": false,
+        "isMultiverse": false,
+        "players": [
+          {
+            "name": "Jack",
+            "oversizedCard": "Aquaman",
+            "oversizedFrom": "Original Core Set (2012)",
+            "score": 57,
+            "nemesis": 4,
+            "result": "Tie",
+            "place": 1
+          },
+          {
+            "name": "Harry",
+            "oversizedCard": "Cyborg",
+            "oversizedFrom": "Original Core Set (2012)",
+            "score": 57,
+            "nemesis": 4,
+            "result": "Tie",
+            "place": 1
+          },
+          {
+            "name": "Jill",
+            "oversizedCard": "Green Lantern",
+            "oversizedFrom": "Original Core Set (2012)",
+            "score": 49,
+            "nemesis": 2,
+            "result": "Loss",
+            "place": 3
+          },
+          {
+            "name": "Sally",
+            "oversizedCard": "Martian Manhunter",
+            "oversizedFrom": "Promo",
+            "score": 44,
+            "nemesis": 2,
+            "result": "Loss",
+            "place": 4
+          }
+        ],
+        "additional": [],
+        "date": "2026-03-15",
+        "dateSort": 20260315,
+        "comment": "Demo base game tie for collapsed history result scanning."
+      },
+      {
+        "gameNum": 14,
+        "game": "Multiverse (World Hopper)",
+        "cross": "None",
+        "isCrisis": false,
+        "isRivals": false,
+        "isMultiverse": true,
+        "multiverseWinCondition": "brainiac",
+        "multiverseEventSets": [
+          "Crossover Pack 5: The Rogues (2017)",
+          "Justice League Dark Expansion (2024)"
+        ],
+        "players": [
+          {
+            "name": "Jack",
+            "oversizedCard": "Batman",
+            "oversizedFrom": "Original Core Set (2012)",
+            "multiverseLocation": "Metropolis",
+            "multiverseLocationSet": "Multiverse",
+            "multiverseLocationCardType": "Multiverse Location",
+            "multiverseChampions": [
+              {
+                "name": "Aquaman",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Cyborg",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Green Lantern",
+                "fromSet": "Original Core Set (2012)"
+              }
+            ],
+            "championsRemaining": 1,
+            "score": 74,
+            "nemesis": 0,
+            "result": "Win",
+            "place": 1
+          },
+          {
+            "name": "Jill",
+            "oversizedCard": "Superman",
+            "oversizedFrom": "Original Core Set (2012)",
+            "multiverseLocation": "Flashpoint Gotham City",
+            "multiverseLocationSet": "Multiverse",
+            "multiverseLocationCardType": "Multiverse Location",
+            "multiverseChampions": [
+              {
+                "name": "The Flash",
+                "fromSet": "Original Core Set (2012)"
+              },
+              {
+                "name": "Martian Manhunter",
+                "fromSet": "Promo"
+              },
+              {
+                "name": "Wonder Woman",
+                "fromSet": "Original Core Set (2012)"
+              }
+            ],
+            "championsRemaining": 0,
+            "score": 68,
+            "nemesis": 0,
+            "result": "Loss",
+            "place": 2
+          }
+        ],
+        "additional": [],
+        "date": "2026-03-22",
+        "dateSort": 20260322,
+        "comment": "World Hopper demo ending by VP after Brainiac.",
+        "multiverseStyle": "worldHopper",
+        "multiverseBaseSets": [
+          "Original Core Set (2012)",
+          "Heroes Unite (2014)"
+        ]
       }
     ],
-    "nextGameNum": 11,
+    "nextGameNum": 15,
     "renames": [],
     "defaultSlot1": "Jack",
     "defaultSlot2": "Jill"
@@ -602,7 +882,7 @@ const DECKLEDGER_SAMPLE_DATA = {
   },
   "preferences": {
     "dcTheme": "light",
-    "dcAdminCardFilter": "",
+    "dcAdminCardFilter": "Original Core Set (2012)",
     "dcAdminOversizedFilter": "Original Core Set (2012)"
   }
 };
