@@ -4,7 +4,7 @@
 
 const STORAGE_KEY = "dcData";
 const DATA_FILE   = "dc_tracker_data.json";
-const APP_VERSION = "0.9.1-beta";
+const APP_VERSION = "0.9.2-beta";
 const EXPORT_VERSION = 2;
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 const NO_IMPORT_COUNT_LIMIT = Number.MAX_SAFE_INTEGER;
@@ -34,8 +34,10 @@ const DEFAULT_CARD_TYPES = [
   "Super-Villain",
   "Villain",
 ];
+const DEFAULT_CARD_TAGS = ["Promo", "Kickstarter"];
+const CARD_TAG_LABELS = { Kickstarter: "KS" };
 const DEFAULT_ADDITIONAL_CARDS = [
-  { name: "Gotham City Docks", set: "Original Core Set (2012)", cardType: "Location" },
+  { name: "Gotham City Docks", set: "Other", cardType: "Location", tags: ["Promo"] },
   { name: "Metropolis", set: "Multiverse", cardType: "Multiverse Location" },
   { name: "Flashpoint Gotham City", set: "Multiverse", cardType: "Multiverse Location" },
   { name: "Fawcett City", set: "Multiverse", cardType: "Multiverse Location" },
@@ -44,16 +46,139 @@ const DEFAULT_ADDITIONAL_CARDS = [
   { name: "Hub City", set: "Multiverse", cardType: "Multiverse Location" },
   { name: "Earth-2", set: "Multiverse", cardType: "Multiverse Location" },
 ];
+function _defaultOversizedCardsFor(fromSet, names) {
+  return names.map(name => ({ name, fromSet }));
+}
 const DEFAULT_OVERSIZED_CARDS = [
-  { name: "Batman", fromSet: "Original Core Set (2012)" },
-  { name: "Superman", fromSet: "Original Core Set (2012)" },
-  { name: "Wonder Woman", fromSet: "Original Core Set (2012)" },
-  { name: "The Flash", fromSet: "Original Core Set (2012)" },
-  { name: "Aquaman", fromSet: "Original Core Set (2012)" },
-  { name: "Cyborg", fromSet: "Original Core Set (2012)" },
-  { name: "Green Lantern", fromSet: "Original Core Set (2012)" },
-  { name: "Martian Manhunter", fromSet: "Promo" },
-  { name: "The Joker", fromSet: "Promo" },
+  ..._defaultOversizedCardsFor("Original Core Set (2012)", [
+    "Batman",
+    "Superman",
+    "Wonder Woman",
+    "The Flash",
+    "Aquaman",
+    "Cyborg",
+    "Green Lantern",
+  ]),
+  ..._defaultOversizedCardsFor("Heroes Unite (2014)", [
+    "Shazam",
+    "Batgirl",
+    "Hawkman",
+    "Booster Gold",
+    "Red Tornado",
+    "Nightwing",
+    "Black Canary",
+  ]),
+  ..._defaultOversizedCardsFor("Forever Evil (2014)", [
+    "Lex Luthor",
+    "Deathstroke",
+    "Harley Quinn",
+    "Black Manta",
+    "Sinestro",
+    "Bizarro",
+    "Black Adam",
+    "Bane",
+  ]),
+  ..._defaultOversizedCardsFor("Teen Titans (2015)", [
+    "Raven",
+    "Starfire",
+    "Beast Boy",
+    "Blue Beetle",
+    "Superboy",
+    "Red Robin",
+    "Wonder Girl",
+  ]),
+  ..._defaultOversizedCardsFor("Dark Nights: Metal (2018)", [
+    "Plastic Man",
+    "Aquaman",
+    "Mister Terrific",
+    "The Flash",
+    "Hal Jordan",
+    "Wonder Woman",
+    "Batman",
+    "Superman",
+    "Doctor Fate",
+    "Cyborg",
+    "Kendra Saunders",
+  ]),
+  ..._defaultOversizedCardsFor("Injustice (2023)", [
+    "Injustice Catwoman",
+    "Injustice Superman",
+    "Injustice Wonder Woman",
+    "Injustice Sinestro",
+    "Injustice Batman",
+    "Injustice Green Arrow",
+    "Injustice Harley Quinn",
+    "Injustice Hawkgirl",
+    "Injustice The Flash",
+    "Injustice The Joker (Earth-1)",
+    "Injustice Yellow Lantern",
+    "Injustice Lex Luthor",
+    "Injustice Nightwing",
+    "Injustice Shazam!",
+    "Injustice Killer Frost",
+    "Injustice Raven",
+  ]),
+  ..._defaultOversizedCardsFor("Justice League: Dark (2024)", [
+    "Wonder Woman",
+    "Ragman",
+    "John Constantine",
+    "Zatanna",
+    "Detective Chimp",
+    "Doctor Fate",
+    "Man-Bat",
+    "Swamp Thing",
+    "Deadman",
+    "Madame Xanadu",
+  ]),
+  ..._defaultOversizedCardsFor("Justice League Dark Expansion (2024)", [
+    "Witchmarked Circe",
+    "Enchantress",
+    "Floronic Man",
+    "Papa Midnite",
+    "Solomon Grundy",
+    "Klarion",
+    "Black Adam",
+    "Felix Faust",
+  ]),
+  ..._defaultOversizedCardsFor("Arkham Asylum (2025)", [
+    "Mr. Freeze",
+    "Killer Croc",
+    "Harley Quinn",
+    "The Joker",
+    "The Riddler",
+    "Clayface",
+    "Jervis Tetch (Mad Hatter)",
+    "Hush",
+    "The Penguin",
+    "Two-Face",
+    "Poison Ivy",
+    "Catwoman",
+    "Kite Man",
+    "Scarecrow",
+  ]),
+  ..._defaultOversizedCardsFor("Arkham Asylum Shadows Expansion (2025)", [
+    "Bane",
+    "Ra's Al Ghul",
+    "Red Hood",
+    "Robin",
+    "Batman",
+    "Batgirl (Cassandra Cain)",
+    "Nightwing",
+    "Oracle",
+    "The Signal",
+    "Batgirl (Stephanie Brown)",
+    "Azrael",
+  ]),
+  ..._defaultOversizedCardsFor("Other", [
+    "Martian Manhunter",
+    "The Joker",
+  ]).map(card => ({ ...card, tags: ["Promo"] })),
+  ..._defaultOversizedCardsFor("Justice League: Dark (2024)", [
+    "Doctor Fate, Lord of Order",
+  ]).map(card => ({ ...card, tags: ["Promo"] })),
+  ..._defaultOversizedCardsFor("Arkham Asylum (2025)", [
+    "Catwoman",
+  ]).map(card => ({ ...card, tags: ["Promo"] })),
 ];
 
 const NATURAL_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
@@ -72,6 +197,7 @@ const RIVALS_NAME_MIGRATIONS = {
   "Rivals: Shazam vs Black Adam (2024)": "Rivals 4: Shazam vs Black Adam (2024)",
   "Rivals: Superman vs. Lex Luthor (2025)": "Rivals 5: Superman vs Lex Luthor (2025)",
   "Rivals: Superman vs Lex Luthor (2025)": "Rivals 5: Superman vs Lex Luthor (2025)",
+  "Rebirth (Coming Soon)": "Rebirth (2019)",
 };
 
 /* ===== Default base games ordered by release year ===== */
@@ -91,6 +217,9 @@ const DEFAULT_GAMES = [
   { name: "Teen Titans Go! (2025)" },
   { name: "Arkham Asylum (2025)" },
   { name: "Rivals 5: Superman vs Lex Luthor (2025)", isRivals: true, rivalsCharacters: ["Superman", "Lex Luthor"] },
+  { name: "Green Lantern Corps (Coming Soon)", comingSoon: true },
+  { name: "The Adventures of Supergirl and Lobo (Coming Soon)", comingSoon: true },
+  { name: "Rebirth (2019)", comingSoon: true },
 ];
 
 /* ===== Default crossover packs & crisis expansions ===== */
@@ -220,6 +349,118 @@ function _dedupeNamedObjects(list) {
   });
 }
 
+function _fallbackEscape(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+function normalizeCardTags(tags) {
+  const raw = Array.isArray(tags) ? tags : (tags ? [tags] : []);
+  const allowed = new Map(DEFAULT_CARD_TAGS.map(tag => [tag.toLowerCase(), tag]));
+  const seen = new Set();
+  return raw.map(tag => allowed.get(String(tag || "").trim().toLowerCase()))
+    .filter(tag => {
+      if (!tag || seen.has(tag)) return false;
+      seen.add(tag);
+      return true;
+    });
+}
+
+function cardTagLabel(tag) {
+  return CARD_TAG_LABELS[tag] || tag;
+}
+
+function cardTagsHtml(tags, escFn) {
+  const esc = escFn || (typeof _esc === "function" ? _esc : _fallbackEscape);
+  return normalizeCardTags(tags)
+    .map(tag => `<span class="card-meta-tag card-meta-tag-${tag.toLowerCase()}">${esc(cardTagLabel(tag))}</span>`)
+    .join("");
+}
+
+function _withTag(item, tag) {
+  item.tags = normalizeCardTags([...(item.tags || []), tag]);
+  return item;
+}
+
+function _normaliseCardRecordTags(list) {
+  (list || []).forEach(item => {
+    item.tags = normalizeCardTags(item.tags || item.tag);
+    delete item.tag;
+  });
+}
+
+function _dedupeCardsWithTags(list, keyFn) {
+  const out = [];
+  (list || []).forEach(item => {
+    const key = keyFn(item);
+    const existing = out.find(other => keyFn(other) === key);
+    if (existing) {
+      existing.tags = normalizeCardTags([...(existing.tags || []), ...(item.tags || [])]);
+    } else {
+      out.push(item);
+    }
+  });
+  return out;
+}
+
+function _migrateSetLinkedPromoOversized(d) {
+  const migrations = [
+    { name: "Martian Manhunter", fromSet: "Promo", toSet: "Other" },
+    { name: "The Joker", fromSet: "Promo", toSet: "Other" },
+    { name: "Catwoman", fromSet: "Promo (Arkham Asylum)", toSet: "Arkham Asylum (2025)" },
+    { name: "Doctor Fate, Lord of Order", fromSet: "Promo (Justice League: Dark)", toSet: "Justice League: Dark (2024)" },
+  ];
+  const applyToList = list => {
+    (list || []).forEach(card => {
+      const migration = migrations.find(m =>
+        (card.name || "").toLowerCase() === m.name.toLowerCase() &&
+        card.fromSet === m.fromSet
+      );
+      if (!migration) return;
+      card.fromSet = migration.toSet;
+      _withTag(card, "Promo");
+    });
+  };
+  [
+    d.knownOversized,
+    d.archivedOversized,
+    d.bannedOversized,
+    d.removedOversized,
+  ].forEach(applyToList);
+  (d.history || []).forEach(h => (h.players || []).forEach(p => {
+    const migration = migrations.find(m =>
+      (p.oversizedCard || p.heroUsed || "").toLowerCase() === m.name.toLowerCase() &&
+      (p.oversizedFrom || p.heroFrom || "") === m.fromSet
+    );
+    if (!migration) return;
+    if (p.oversizedFrom) p.oversizedFrom = migration.toSet;
+    if (p.heroFrom) p.heroFrom = migration.toSet;
+  }));
+}
+
+function _migrateTaggedAdditionalCards(d) {
+  const migrations = [
+    { name: "Gotham City Docks", set: "Original Core Set (2012)", toSet: "Other", tag: "Promo" },
+  ];
+  const applyToCard = card => {
+    if (!card || typeof card === "string") return;
+    const migration = migrations.find(m =>
+      (card.name || "").toLowerCase() === m.name.toLowerCase() &&
+      (card.set || card.type || "Other") === m.set
+    );
+    if (!migration) return;
+    card.set = migration.toSet;
+    delete card.type;
+    _withTag(card, migration.tag);
+  };
+  [
+    d.knownCards,
+    d.archivedCards,
+    d.bannedCards,
+    d.removedCards,
+  ].forEach(list => (list || []).forEach(applyToCard));
+  (d.history || []).forEach(h => (h.additional || []).forEach(applyToCard));
+}
+
 function _normalise(d) {
   if (!d.players)             d.players             = [];
   if (!d.games)               d.games               = [];
@@ -252,6 +493,34 @@ function _normalise(d) {
   if (!d.removedPlayers)      d.removedPlayers      = [];
   _normaliseMultiverseLists(d);
   _normaliseAdditionalCards(d);
+  _migrateSetLinkedPromoOversized(d);
+  _migrateTaggedAdditionalCards(d);
+  [
+    d.knownCards,
+    d.archivedCards,
+    d.bannedCards,
+    d.removedCards,
+    d.knownOversized,
+    d.archivedOversized,
+    d.bannedOversized,
+    d.removedOversized,
+  ].forEach(_normaliseCardRecordTags);
+  d.history.forEach(h => {
+    (h.additional || []).forEach(c => {
+      if (c && typeof c !== "string") c.tags = normalizeCardTags(c.tags || c.tag);
+    });
+    (h.players || []).forEach(p => {
+      (p.multiverseChampions || []).forEach(ch => { ch.tags = normalizeCardTags(ch.tags || ch.tag); });
+    });
+  });
+  d.knownCards = _dedupeCardsWithTags(d.knownCards, c => `${(c.name || "").toLowerCase()}|${c.set || c.type || "Other"}`);
+  d.archivedCards = _dedupeCardsWithTags(d.archivedCards, c => `${(c.name || "").toLowerCase()}|${c.set || c.type || "Other"}`);
+  d.bannedCards = _dedupeCardsWithTags(d.bannedCards, c => `${(c.name || "").toLowerCase()}|${c.set || c.type || "Other"}`);
+  d.removedCards = _dedupeCardsWithTags(d.removedCards, c => `${(c.name || "").toLowerCase()}|${c.set || c.type || "Other"}`);
+  d.knownOversized = _dedupeCardsWithTags(d.knownOversized, c => `${(c.name || "").toLowerCase()}|${c.fromSet || ""}`);
+  d.archivedOversized = _dedupeCardsWithTags(d.archivedOversized, c => `${(c.name || "").toLowerCase()}|${c.fromSet || ""}`);
+  d.bannedOversized = _dedupeCardsWithTags(d.bannedOversized, c => `${(c.name || "").toLowerCase()}|${c.fromSet || ""}`);
+  d.removedOversized = _dedupeCardsWithTags(d.removedOversized, c => `${(c.name || "").toLowerCase()}|${c.fromSet || ""}`);
   _migrateMultiverseLibraries(d);
   d.knownCards = (d.knownCards || []).filter(c =>
     !_cardExists(d.archivedCards, c.name, c.set) &&
@@ -283,7 +552,7 @@ function _normalise(d) {
     if (h.isMultiverse) h.game = h.multiverseStyle === "worldHopper" ? "Multiverse (World Hopper)" : "Multiverse";
     if (h.isRivals === undefined)
       h.isRivals = !h.isCrisis && ((d.games || []).find(g => g.name === h.game)?.isRivals || false);
-    if (!h.isCrisis && !h.isRivals && !h.isMultiverse) applyStandardGameResults(h.players || []);
+    if (!h.isCrisis && !h.isRivals && !h.isMultiverse) applyStandardGameResults(h.players || [], h.standardTieBreakerWinner || "");
   });
   d.games = _dedupeNamedObjects(d.games);
   d.archivedGames = _dedupeNamedObjects(d.archivedGames);
@@ -295,6 +564,7 @@ function _normalise(d) {
     const active = d.games.find(g => g.name === def.name);
     if (active) {
       active.isRivals = !!def.isRivals;
+      active.comingSoon = !!def.comingSoon;
       if (def.rivalsCharacters) active.rivalsCharacters = [...def.rivalsCharacters];
       _normaliseRivalsCharacters(active);
     } else {
@@ -328,6 +598,7 @@ function _normalise(d) {
     if (active) {
       active.cardType = def.cardType;
       active.set = def.set;
+      active.tags = normalizeCardTags(def.tags || active.tags);
     } else {
       d.knownCards.push({ ...def });
     }
@@ -338,7 +609,12 @@ function _normalise(d) {
     const archived = _oversizedExists(d.archivedOversized, def.name, def.fromSet);
     const banned = _oversizedExists(d.bannedOversized, def.name, def.fromSet);
     if (archived || banned) return;
-    if (!_oversizedExists(d.knownOversized, def.name, def.fromSet)) d.knownOversized.push({ ...def });
+    const active = (d.knownOversized || []).find(c => _oversizedExists([c], def.name, def.fromSet));
+    if (active) {
+      active.tags = normalizeCardTags([...(active.tags || []), ...(def.tags || [])]);
+    } else {
+      d.knownOversized.push({ ...def });
+    }
   });
 
   _restoreLibrariesFromHistory(d);
@@ -485,18 +761,23 @@ function _oversizedExists(list, name, fromSet) {
   );
 }
 
-function applyStandardGameResults(players) {
+function applyStandardGameResults(players, standardTieBreakerWinner = "") {
   const list = players || [];
   if (!list.length) return list;
   const betterThan = (a, b) =>
     (a.score || 0) > (b.score || 0) ||
-    ((a.score || 0) === (b.score || 0) && (a.nemesis || 0) > (b.nemesis || 0));
+    ((a.score || 0) === (b.score || 0) && (a.nemesis || 0) > (b.nemesis || 0)) ||
+    ((a.score || 0) === (b.score || 0) &&
+      (a.nemesis || 0) === (b.nemesis || 0) &&
+      a.name === standardTieBreakerWinner &&
+      b.name !== standardTieBreakerWinner);
   const topScore = Math.max(...list.map(p => p.score || 0));
   const topNemesis = Math.max(...list.filter(p => (p.score || 0) === topScore).map(p => p.nemesis || 0));
   const topPlayers = list.filter(p => (p.score || 0) === topScore && (p.nemesis || 0) === topNemesis);
+  const officialWinner = topPlayers.find(p => p.name === standardTieBreakerWinner);
   list.forEach(p => {
     p.place = list.filter(other => betterThan(other, p)).length + 1;
-    if (p.place === 1) p.result = topPlayers.length > 1 ? "Tie" : "Win";
+    if (p.place === 1) p.result = topPlayers.length > 1 && !officialWinner ? "Tie" : "Win";
     else p.result = "Loss";
   });
   return list;
@@ -799,6 +1080,16 @@ function _cleanStringArray(obj, key, maxEntries, maxLen) {
   );
 }
 
+function _cleanCardTags(obj, label) {
+  if (!obj || obj.tags === undefined) return [];
+  const tags = _importArray(obj, "tags", DEFAULT_CARD_TAGS.length).map((tag, idx) =>
+    _importString(tag, `${label}.tags[${idx}]`, IMPORT_LIMITS.name)
+  );
+  const invalid = tags.find(tag => !DEFAULT_CARD_TAGS.some(def => def.toLowerCase() === tag.toLowerCase()));
+  if (invalid) _importFail(`Invalid ${label}.tags value "${invalid}"`);
+  return normalizeCardTags(tags);
+}
+
 function _cleanGame(item, idx) {
   const obj = _importObject(item, `games[${idx}]`);
   const game = {
@@ -827,6 +1118,7 @@ function _cleanCard(item, idx, listName) {
     name: _importString(obj.name, `${listName}[${idx}].name`, IMPORT_LIMITS.name),
     set: _importString(obj.set || obj.type, `${listName}[${idx}].set`, IMPORT_LIMITS.setName, "Other"),
     cardType: _importString(obj.cardType, `${listName}[${idx}].cardType`, IMPORT_LIMITS.name, "Hero"),
+    tags: _cleanCardTags(obj, `${listName}[${idx}]`),
   };
 }
 
@@ -835,6 +1127,7 @@ function _cleanOversized(item, idx, listName) {
   return {
     name: _importString(obj.name, `${listName}[${idx}].name`, IMPORT_LIMITS.name),
     fromSet: _importString(obj.fromSet, `${listName}[${idx}].fromSet`, IMPORT_LIMITS.setName),
+    tags: _cleanCardTags(obj, `${listName}[${idx}]`),
   };
 }
 
@@ -850,6 +1143,7 @@ function _cleanMultiverseChampion(item, idx, listName) {
   return {
     name: _importString(obj.name, `${listName}[${idx}].name`, IMPORT_LIMITS.name),
     fromSet: _importString(obj.fromSet || obj.set, `${listName}[${idx}].fromSet`, IMPORT_LIMITS.setName, "Multiverse"),
+    tags: _cleanCardTags(obj, `${listName}[${idx}]`),
   };
 }
 
@@ -904,6 +1198,7 @@ function _cleanHistoryEntry(item, idx) {
     multiverseEventCards: _cleanStringArray(obj, "multiverseEventCards", 50, IMPORT_LIMITS.name),
     teamWon: _importBool(obj.teamWon, `history[${idx}].teamWon`, false),
     teamNemesis: _importInt(obj.teamNemesis, `history[${idx}].teamNemesis`, 0, 0, 999),
+    standardTieBreakerWinner: _importString(obj.standardTieBreakerWinner, `history[${idx}].standardTieBreakerWinner`, IMPORT_LIMITS.playerName),
     players,
     additional,
     date: _importString(obj.date, `history[${idx}].date`, 40),

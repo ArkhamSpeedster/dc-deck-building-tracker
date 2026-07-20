@@ -91,6 +91,30 @@ function _oversizedTag(name, fromSet) {
   return "";
 }
 
+function _historyOversizedMetaTags(name, fromSet) {
+  const lists = [
+    App.data.knownOversized,
+    App.data.archivedOversized,
+    App.data.bannedOversized,
+    App.data.removedOversized,
+  ];
+  const found = lists.flat().find(k => k?.name === name && k?.fromSet === fromSet);
+  return cardTagsHtml(found?.tags, _esc);
+}
+
+function _historyAdditionalMetaTags(card, name, set) {
+  const entryTags = typeof card === "string" ? [] : card?.tags;
+  if (normalizeCardTags(entryTags).length) return cardTagsHtml(entryTags, _esc);
+  const lists = [
+    App.data.knownCards,
+    App.data.archivedCards,
+    App.data.bannedCards,
+    App.data.removedCards,
+  ];
+  const found = lists.flat().find(k => k?.name === name && (k?.set || k?.type || "Other") === set);
+  return cardTagsHtml(found?.tags, _esc);
+}
+
 function renderHistory() {
   const data = App.data;
   const historyGames = [...new Set([...(data.games || []).map(g => g.name), ...(data.history || []).map(h => h.game)].filter(Boolean))]
@@ -165,7 +189,8 @@ function renderHistory() {
         const ov = (p.oversizedCard||p.heroUsed||"").trim();
         const ovDel = ov ? _oversizedTag(ov, p.oversizedFrom||p.heroFrom||"") : "";
         const ovFrom = p.oversizedFrom || p.heroFrom || "";
-        const ovLine = ov ? `<div class="hist-mv-loadout hist-card-loadout"><div><small>Character</small><span class="hist-mv-tag">${_esc(ov)}${ovFrom?` <em>${_esc(ovFrom)}</em>`:""}${ovDel}</span></div></div>` : "";
+        const ovMetaTags = ov ? _historyOversizedMetaTags(ov, ovFrom) : "";
+        const ovLine = ov ? `<div class="hist-mv-loadout hist-card-loadout"><div><small>Character</small><span class="hist-mv-tag">${_esc(ov)}${ovFrom?` <em>${_esc(ovFrom)}</em>`:""}${ovMetaTags}${ovDel}</span></div></div>` : "";
         const resultClass = h.teamWon ? "win" : "loss";
         return `<div class="hist-player-grid-row">
           <div class="hist-player-grid-cell hist-player-main"><div class="pname-cell">${_esc(p.name)}${_playerTag(p.name)}</div>${ovLine}</div>
@@ -180,14 +205,15 @@ function renderHistory() {
         const ov = (p.oversizedCard||p.heroUsed||"").trim();
         const ovFrom = p.oversizedFrom || p.heroFrom || "";
         const ovDel2 = ov ? _oversizedTag(ov, ovFrom) : "";
+        const ovMetaTags = ov ? _historyOversizedMetaTags(ov, ovFrom) : "";
         const champions = (p.multiverseChampions || []).map(ch => `
           <li>
-            <span>${_esc(ch.name)}</span>
+            <span>${_esc(ch.name)}${_historyOversizedMetaTags(ch.name, ch.fromSet || ch.set || "")}${_oversizedTag(ch.name, ch.fromSet || ch.set || "")}</span>
             ${ch.fromSet ? `<em>${_esc(ch.fromSet)}</em>` : ""}
           </li>
         `).join("");
         const ovLine = `<div class="hist-mv-loadout">
-          ${ov ? `<div><small>Character</small><span class="hist-mv-tag">${_esc(ov)}${ovFrom?` <em>${_esc(ovFrom)}</em>`:""}${ovDel2}</span></div>` : ""}
+          ${ov ? `<div><small>Character</small><span class="hist-mv-tag">${_esc(ov)}${ovFrom?` <em>${_esc(ovFrom)}</em>`:""}${ovMetaTags}${ovDel2}</span></div>` : ""}
           ${p.multiverseLocation ? `<div><small>Location</small><span class="hist-mv-tag">${_esc(p.multiverseLocation)}</span></div>` : ""}
           ${champions ? `<div class="hist-mv-champions"><small>Champions</small><ol>${champions}</ol></div>` : ""}
         </div>`;
@@ -206,7 +232,8 @@ function renderHistory() {
         const ov = rivalChar || (p.oversizedCard||p.heroUsed||"").trim();
         const ovFrom = p.oversizedFrom || p.heroFrom || "";
         const ovDel2 = ov && !rivalChar ? _oversizedTag(ov, ovFrom) : "";
-        const ovLine = ov ? `<div class="hist-mv-loadout hist-card-loadout"><div><small>Character</small><span class="hist-mv-tag">${_esc(ov)}${ovFrom && !rivalChar?` <em>${_esc(ovFrom)}</em>`:""}${rivalChar?` <em>Rivals</em>`:""}${ovDel2}</span></div></div>` : "";
+        const ovMetaTags = ov && !rivalChar ? _historyOversizedMetaTags(ov, ovFrom) : "";
+        const ovLine = ov ? `<div class="hist-mv-loadout hist-card-loadout"><div><small>Character</small><span class="hist-mv-tag">${_esc(ov)}${ovFrom && !rivalChar?` <em>${_esc(ovFrom)}</em>`:""}${rivalChar?` <em>Rivals</em>`:""}${ovMetaTags}${ovDel2}</span></div></div>` : "";
         const rawResult = (p.result || "").toString();
         const resultTone = ["win", "loss", "tie"].includes(rawResult.toLowerCase()) ? rawResult.toLowerCase() : "";
         const resultClass = resultTone ? `pname-${resultTone}` : "";
@@ -230,7 +257,8 @@ function renderHistory() {
           const set = typeof c==="string"?"Other":(c.set || c.type || "Other");
           const cardType = typeof c==="string"?"":(c.cardType || "");
           const dtag = _cardTag(n, set);
-          return `<span class="card-tag">${set?`<em class="card-type-label">${_esc(set)}</em> `:""}${_esc(n)}${cardType?` <span class="hero-from">(${_esc(cardType)})</span>`:""}${dtag}</span>`;
+          const tags = _historyAdditionalMetaTags(c, n, set);
+          return `<span class="card-tag">${set?`<em class="card-type-label">${_esc(set)}</em> `:""}${_esc(n)}${cardType?` <span class="hero-from">(${_esc(cardType)})</span>`:""}${tags}${dtag}</span>`;
         }).join(" ")
       : "—";
 
@@ -262,6 +290,9 @@ function renderHistory() {
     const additionalHtml = visibleAdditional.length
       ? `<details class="hist-detail-block"><summary>Additional Cards <span>${_esc(visibleAdditional.length)}</span></summary><div class="hist-detail-body">${additionalStr}</div></details>`
       : "";
+    const standardTieBreakerHtml = h.standardTieBreakerWinner
+      ? `<details class="hist-detail-block"><summary>Final Tie-Breaker</summary><div class="hist-detail-body">Most recent Super-Villain defeated by <strong>${_esc(h.standardTieBreakerWinner)}</strong>.</div></details>`
+      : "";
 
     card.innerHTML = `
       <header class="history-game-card-head" onclick="if (!event.target.closest('button')) toggleHistoryCard('${_esc(cardKey)}')">
@@ -285,7 +316,7 @@ function renderHistory() {
           <span>Result</span>
         </div>
         <div class="history-player-matrix">${playerRows}</div>
-        <div class="history-game-details">${multiverseHtml}${additionalHtml}${commentHtml}</div>
+        <div class="history-game-details">${multiverseHtml}${standardTieBreakerHtml}${additionalHtml}${commentHtml}</div>
       </div>
     `;
     cardList.appendChild(card);
@@ -420,13 +451,20 @@ function editGame(i) {
         const winnerSel = document.getElementById("multiverseWinnerSelect");
         if (winnerSel && winner) winnerSel.value = winner;
       }
+      updateStandardTieBreakerOptions();
+      const standardTieBreakerSel = document.getElementById("standardTieBreakerSelect");
+      if (standardTieBreakerSel && h.standardTieBreakerWinner) {
+        standardTieBreakerSel.value = h.standardTieBreakerWinner;
+        _tintPlaceholders(standardTieBreakerSel.parentElement);
+      }
 
       document.getElementById("additionalCardsContainer").innerHTML = "";
       (h.additional||[]).filter(c => !isMultiverseLocationCard(c)).forEach(c => {
         const name = typeof c==="string"?c:c.name;
         const set = typeof c==="string"?"Other":(c.set || c.type || "Other");
         const cardType = typeof c==="string"?"Hero":(c.cardType || "Hero");
-        addAdditionalCard(name, set, cardType);
+        const tags = typeof c==="string"?[]:normalizeCardTags(c.tags);
+        addAdditionalCard(name, set, cardType, tags);
       });
 
       if (h.isCrisis) {

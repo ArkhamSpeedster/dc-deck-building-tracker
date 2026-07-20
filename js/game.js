@@ -2,7 +2,6 @@
  * game.js — Log Game / Edit Game page
  */
 
-const CARD_TYPES = ["Promo", "Other"];
 const MULTIVERSE_GAME_NAME = "Multiverse";
 const WORLD_HOPPER_GAME_NAME = "Multiverse (World Hopper)";
 let _gameIsDirty = false;
@@ -21,9 +20,8 @@ function _esc(s) {
 
 function getAllSets() {
   const named = [
-    ...App.data.games.filter(g => !g.isRivals).map(g => g.name),
+    ...App.data.games.filter(g => !g.isRivals && !g.comingSoon).map(g => g.name),
     ...App.data.crossovers.filter(c => c.name !== "None").map(c => c.name),
-    "Promo",
   ].sort(naturalCompare);
   return [...named, "Other"];
 }
@@ -162,7 +160,7 @@ function getMultiverseEventSetOptions(currentValue, selectedValues) {
 
 function getMultiverseBaseSetOptions(currentValue, selectedValues) {
   const options = (App.data.games || [])
-    .filter(g => !g.isRivals)
+    .filter(g => !g.isRivals && !g.comingSoon)
     .map(g => g.name)
     .sort(naturalCompare);
   return options
@@ -298,7 +296,7 @@ function renderGameSetup() {
   baseSelect.innerHTML =
     gameOptions
       .sort((a, b) => (a.name === "Original Core Set (2012)" ? -1 : b.name === "Original Core Set (2012)" ? 1 : naturalCompare(a.name, b.name)))
-      .map(g => `<option value="${_esc(g.name)}">${_esc(g.name)}</option>`).join("");
+      .map(g => `<option value="${_esc(g.name)}" ${g.comingSoon ? "disabled" : ""}>${_esc(g.name)}</option>`).join("");
   if (prev) baseSelect.value = prev;
   if (!baseSelect.value && baseSelect.options.length) baseSelect.value = "Original Core Set (2012)";
 
@@ -393,6 +391,7 @@ function checkCrisis() {
   updateAddPlayerBtn();
   updateRivalsWinnerOptions();
   updateMultiverseWinnerOptions();
+  updateStandardTieBreakerOptions();
 }
 
 function isCrisisMode() {
@@ -471,7 +470,7 @@ function _appendPlayerRow(prefill) {
     </label>`;
 
   div.innerHTML = `
-    <select class="pname" onchange="updateAllPlayerSelects(); updateAddPlayerBtn(); _markGameDirty();">
+    <select class="pname" onchange="updateAllPlayerSelects(); updateAddPlayerBtn(); updateStandardTieBreakerOptions(); _markGameDirty();">
       ${extraOpt}${playerOpts}
     </select>
     ${rivals ? `
@@ -509,11 +508,11 @@ function _appendPlayerRow(prefill) {
       <div class="score-nemesis-group">
         <span class="mv-score-wrap">
           <label class="field-inline-label">Score (VPs):</label>
-          <input type="number" class="score" min="0" value="${scoreVal}" oninput="_markGameDirty();">
+          <input type="number" class="score" min="0" value="${scoreVal}" oninput="updateStandardTieBreakerOptions(); _markGameDirty();">
         </span>
         ${multiverse ? "" : `
           <label class="field-inline-label"># Nemesis Defeated:</label>
-          <input type="number" class="nemesis" min="0" value="${nemesisVal}" oninput="_markGameDirty();">
+          <input type="number" class="nemesis" min="0" value="${nemesisVal}" oninput="updateStandardTieBreakerOptions(); _markGameDirty();">
         `}
       </div>
     `}
@@ -662,6 +661,40 @@ function updateRivalsWinnerOptions() {
   if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
 }
 
+function currentNormalTieBreakerPlayers() {
+  if (isCrisisMode() || isRivalsMode() || activeMultiverseMode()) return [];
+  const rows = [...document.querySelectorAll(".player-row")];
+  const players = rows.map(row => ({
+    name: row.querySelector(".pname")?.value || "",
+    score: parseInt(row.querySelector(".score")?.value, 10),
+    nemesis: parseInt(row.querySelector(".nemesis")?.value, 10),
+  })).filter(p => p.name && Number.isInteger(p.score) && Number.isInteger(p.nemesis));
+  if (players.length < 2 || players.length !== rows.length) return [];
+  const topScore = Math.max(...players.map(p => p.score));
+  const topScorePlayers = players.filter(p => p.score === topScore);
+  if (topScorePlayers.length < 2) return [];
+  const topNemesis = Math.max(...topScorePlayers.map(p => p.nemesis));
+  return topScorePlayers.filter(p => p.nemesis === topNemesis);
+}
+
+function updateStandardTieBreakerOptions() {
+  const wrap = document.getElementById("standardTieBreakerFields");
+  const sel = document.getElementById("standardTieBreakerSelect");
+  if (!wrap || !sel) return;
+  const tied = currentNormalTieBreakerPlayers();
+  const current = sel.value;
+  if (tied.length < 2) {
+    wrap.style.display = "none";
+    sel.innerHTML = "";
+    return;
+  }
+  wrap.style.display = "block";
+  sel.innerHTML = `<option value="" disabled ${current ? "" : "selected"} class="placeholder-opt">— Choose Player —</option>` +
+    tied.map(p => `<option value="${_esc(p.name)}" ${p.name === current ? "selected" : ""}>${_esc(p.name)}</option>`).join("");
+  if (current && tied.some(p => p.name === current)) sel.value = current;
+  _tintPlaceholders(wrap);
+}
+
 function _tintPlaceholders(scope) {
   const root = scope || document;
   root.querySelectorAll("select").forEach(sel => {
@@ -798,6 +831,7 @@ function removePlayerRow(btn) {
   refreshAllRivalsCharacterDropdowns();
   updateRivalsWinnerOptions();
   updateMultiverseWinnerOptions();
+  updateStandardTieBreakerOptions();
   _markGameDirty();
 }
 
@@ -839,6 +873,7 @@ function addPlayerToGame() {
   _appendPlayerRow({ name: next });
   updateAllPlayerSelects();
   updateAddPlayerBtn();
+  updateStandardTieBreakerOptions();
   _markGameDirty();
 }
 
@@ -887,17 +922,18 @@ function currentAdditionalCards() {
     name: (r.querySelector(".addCard")?.value || "").trim(),
     set: r.dataset.cardSet || "Other",
     cardType: r.dataset.cardType || "",
+    tags: normalizeCardTags(JSON.parse(r.dataset.cardTags || "[]")),
   })).filter(c => c.name);
 }
 
-function addAdditionalCard(prefillName, prefillSet, prefillCardType) {
+function addAdditionalCard(prefillName, prefillSet, prefillCardType, prefillTags) {
   // Called with prefill when loading an existing game entry for editing
   if (prefillName !== undefined) {
     if (isMultiverseLocationCard({ name: prefillName, set: prefillSet || "Other", cardType: prefillCardType || "Hero" })) return;
     const isKnown = _additionalCardLibrary().some(
       k => k.name.toLowerCase() === prefillName.toLowerCase() && k.set === (prefillSet || "Other")
     );
-    _appendCardRow(prefillName, prefillSet || "Other", prefillCardType || "Hero", isKnown);
+    _appendCardRow(prefillName, prefillSet || "Other", prefillCardType || "Hero", isKnown, prefillTags);
     return;
   }
 
@@ -972,7 +1008,10 @@ function onAdditionalCardSetFilter(setFilterSel) {
   cardSel.disabled = false;
   cardSel.innerHTML = `
     <option value="">— Select saved card —</option>
-    ${available.map(k => `<option value="${_esc(k.name)}||${_esc(k.set)}||${_esc(k.cardType || "")}">${_esc(k.name)} (${_esc(k.cardType || "No type")})</option>`).join("")}
+    ${available.map(k => {
+      const tagText = normalizeCardTags(k.tags).map(cardTagLabel).join(", ");
+      return `<option value="${_esc(k.name)}||${_esc(k.set)}||${_esc(k.cardType || "")}">${_esc(k.name)} (${_esc(k.cardType || "No type")})${tagText ? ` [${_esc(tagText)}]` : ""}</option>`;
+    }).join("")}
   `;
   _tintPlaceholders(pickerRow);
 }
@@ -982,29 +1021,33 @@ function onCardPickerChange(sel) {
   const val = sel.value;
   if (!val) return;
   const [name, set, cardType] = val.split("||");
+  const libCard = _additionalCardLibrary().find(k => k.name === name && k.set === set);
   const already = currentAdditionalCards();
   if (already.some(a => a.name.toLowerCase() === name.toLowerCase() && a.set === set)) {
     showToast(`"${name} (${set})" is already in the list.`, "error");
     row.remove(); return;
   }
   row.remove();
-  _appendCardRow(name, set, cardType, true);
+  _appendCardRow(name, set, cardType, true, libCard?.tags);
 }
 
-function _appendCardRow(name, set, cardType, isKnown) {
+function _appendCardRow(name, set, cardType, isKnown, tags) {
   const container = document.getElementById("additionalCardsContainer");
   const div = document.createElement("div");
   div.className = "additional-card-row fade";
   div.dataset.cardSet = set || "Other";
   div.dataset.cardType = cardType || "";
+  div.dataset.cardTags = JSON.stringify(normalizeCardTags(tags));
   // Both known and unknown cards are read-only; unknown entries from history get a muted label
   const setBadge = isKnown
     ? `<span class="card-known-badge">${_esc(set)}</span>`
     : `<span class="card-known-badge" style="background:#3f1515;color:#f87171;">${_esc(set)}</span>`;
   const typeBadge = `<span class="card-known-badge">${_esc(cardType || "No type")}</span>`;
+  const tagBadges = cardTagsHtml(tags, _esc);
   div.innerHTML = `
     ${setBadge}
     ${typeBadge}
+    ${tagBadges}
     <input type="text" class="addCard" value="${_esc(name)}" readonly
            style="color:var(--text-muted);cursor:default;" maxlength="20">
     <button class="danger" onclick="this.closest('.additional-card-row').remove()">✕</button>
@@ -1020,6 +1063,12 @@ function validateGame() {
   const crisis = isCrisisMode();
   const rivals = isRivalsMode();
   const multiverse = activeMultiverseMode();
+  const selectedBase = document.getElementById("baseGameSelect")?.value || "";
+  const selectedGame = App.data.games.find(g => g.name === selectedBase);
+
+  if (selectedGame?.comingSoon) {
+    _showGameError(`${selectedBase} is coming soon and cannot be selected yet.`); return false;
+  }
 
   if (!document.getElementById("gameDateInput").value) {
     _showGameError("Please select a game date."); return false;
@@ -1180,6 +1229,14 @@ function validateGame() {
     }
   }
 
+  const standardTieBreakerPlayers = currentNormalTieBreakerPlayers();
+  if (standardTieBreakerPlayers.length >= 2) {
+    const winner = document.getElementById("standardTieBreakerSelect")?.value || "";
+    if (!winner || !standardTieBreakerPlayers.some(p => p.name === winner)) {
+      _showGameError("Choose which tied player most recently defeated a Super-Villain."); return false;
+    }
+  }
+
   // Duplicate additional cards
   const cards = currentAdditionalCards();
   for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) {
@@ -1204,14 +1261,14 @@ function saveGame() {
 
   const gameNum = _editingEntry != null ? _editingEntry.gameNum : (data.history.length + 1);
   const additional = [...document.querySelectorAll(".additional-card-row:not(.card-picker-row)")]
-    .map(r => ({ name: (r.querySelector(".addCard")?.value || "").trim(), set: r.dataset.cardSet || "Other", cardType: r.dataset.cardType || "Hero" }))
+    .map(r => ({ name: (r.querySelector(".addCard")?.value || "").trim(), set: r.dataset.cardSet || "Other", cardType: r.dataset.cardType || "Hero", tags: normalizeCardTags(JSON.parse(r.dataset.cardTags || "[]")) }))
     .filter(c => c.name && !isMultiverseLocationCard(c));
   additional.forEach(c => {
     const isArchived = (data.archivedCards || []).some(k => k.name.toLowerCase() === c.name.toLowerCase() && (k.set || k.type || "Other") === c.set);
     const isBanned = (data.bannedCards || []).some(k => k.name.toLowerCase() === c.name.toLowerCase() && (k.set || k.type || "Other") === c.set);
     const isRemoved = (data.removedCards || []).some(k => k.name.toLowerCase() === c.name.toLowerCase() && (k.set || k.type || "Other") === c.set);
     if (!isArchived && !isBanned && !isRemoved && !data.knownCards.some(k => k.name.toLowerCase() === c.name.toLowerCase() && k.set === c.set))
-      data.knownCards.push({ name: c.name, set: c.set, cardType: c.cardType });
+      data.knownCards.push({ name: c.name, set: c.set, cardType: c.cardType, tags: normalizeCardTags(c.tags) });
   });
 
   function getOv(row) {
@@ -1300,14 +1357,16 @@ function saveGame() {
       players, additional, date, dateSort: dateSortKey(date),
     };
   } else {
+    const standardTieBreakerWinner = document.getElementById("standardTieBreakerSelect")?.value || "";
     const players = rows.map(r => {
       const ov = getOv(r); if (ov.name) _saveOversized(ov.name, ov.fromSet);
       return { name: r.querySelector(".pname").value, oversizedCard: ov.name, oversizedFrom: ov.fromSet,
                score: parseInt(r.querySelector(".score")?.value) || 0,
                nemesis: parseInt(r.querySelector(".nemesis")?.value) || 0 };
     });
-    applyStandardGameResults(players);
+    applyStandardGameResults(players, standardTieBreakerWinner);
     entry = { gameNum, game: base, cross, isCrisis: false, isRivals: rivals, players, additional, date, dateSort: dateSortKey(date) };
+    if (standardTieBreakerWinner) entry.standardTieBreakerWinner = standardTieBreakerWinner;
   }
 
   const comment = (document.getElementById("gameCommentInput")?.value || "").trim();

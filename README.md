@@ -14,7 +14,7 @@ A demo dataset is included so you can quickly see History and Stats populated.
 
 `sample-data/deckledger_demo_data.json`
 
-It includes four players, fourteen logged games, an extra Promo card named Reverse Flash, archived/banned cards that appear in history, a true tie example, three Multiverse examples including World Hopper, and enough variety to show off History and Stats views.
+It includes four players, fourteen logged games, an extra Promo card named Reverse Flash, archived/banned cards that appear in history, official tie-breaker examples, three Multiverse examples including World Hopper, and enough variety to show off History and Stats views.
 
 To try it:
 
@@ -28,14 +28,14 @@ The sample data is also bundled in the app so `Load Sample Data` works when open
 
 ## What It Tracks
 
-- Game sessions with base game, crossover/expansion, date, players, oversized cards, scores, nemesis defeats, and optional comments.
+- Game sessions with base game, crossover/expansion, date, players, oversized cards, scores, nemesis defeats, official final tie-breakers, and optional comments.
 - Normal, Rivals, Crisis, and Multiverse variant games.
 - Rivals-specific character assignment and win/loss results.
 - Multiverse-specific character, Location, 3 Champion oversized cards, base sets, Event sets, style, and ending condition tracking.
 - Player win rates, average scores, placements, Crisis results, Rivals results, Multiverse results, and most-used oversized cards.
-- Overall set usage, crossover usage, top oversized cards, top additional cards, Multiverse Locations/Champions, and outcome summaries.
-- Saved additional cards with set and card type.
-- Saved oversized cards by source set.
+- Overall set usage, crossover usage, top oversized cards, top additional cards, Crisis results, and outcome summaries.
+- Saved additional cards with set, card type, and optional tags like Promo or Kickstarter.
+- Saved oversized cards by source set with optional tags like Promo or Kickstarter.
 - Multiverse Locations are managed in the Additional Cards settings list with card type `Multiverse Location`, but they are only selectable in Multiverse games and are shown as player setup details in History/Stats. Champions use the Oversized Cards list.
 - Archived, banned, and removed labels in history and stats so old entries still make sense.
 - JSON export/import for backups and device transfer.
@@ -69,42 +69,9 @@ Treat exported JSON like personal app data. Do not import JSON files from people
 
 ## Default Cards
 
-Default card types:
+DeckLedger includes pre-populated card types, additional cards, Multiverse Locations, and oversized cards so the app is usable immediately after first load.
 
-- Equipment
-- Hero
-- Location
-- Multiverse Location
-- Starter
-- Super Power
-- Super-Hero
-- Super-Villain
-- Villain
-
-Default additional cards:
-
-- Gotham City Docks — Original Core Set (2012), Location
-- 30th Century Metropolis — Multiverse, Multiverse Location
-- Earth-2 — Multiverse, Multiverse Location
-- Fawcett City — Multiverse, Multiverse Location
-- Flashpoint Gotham City — Multiverse, Multiverse Location
-- Gotham City — Multiverse, Multiverse Location
-- Hub City — Multiverse, Multiverse Location
-- Metropolis — Multiverse, Multiverse Location
-
-Default oversized cards:
-
-- Batman — Original Core Set (2012)
-- Superman — Original Core Set (2012)
-- Wonder Woman — Original Core Set (2012)
-- The Flash — Original Core Set (2012)
-- Aquaman — Original Core Set (2012)
-- Cyborg — Original Core Set (2012)
-- Green Lantern — Original Core Set (2012)
-- Martian Manhunter — Promo
-- The Joker — Promo
-
-Default additional and oversized cards are maintained by DeckLedger. They can be archived or banned, but they cannot be edited or permanently removed. User-added cards can be edited, archived, banned, or removed.
+Default additional and oversized cards are maintained by DeckLedger. They can be archived or banned, but they cannot be edited or permanently removed. User-added cards can be edited, tagged, archived, banned, or removed.
 
 ## Supported Sets
 

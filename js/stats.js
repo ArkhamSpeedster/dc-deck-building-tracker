@@ -4,6 +4,7 @@
 
 let chartPlayerInstance = null;
 let chartGameInstance   = null;
+let chartCrisisInstance = null;
 let chartTopOversizedInstance = null;
 let chartTopAdditionalInstance = null;
 let _compareWarningMsg  = "";
@@ -64,16 +65,26 @@ function _sCardTag(name, set) {
   return (!inLib && isArchived) ? ` <span class="archived-badge">archived</span>` : "";
 }
 
+function _statsOversizedTags(name, fromSet) {
+  const lists = [App.data.knownOversized, App.data.archivedOversized, App.data.bannedOversized, App.data.removedOversized];
+  const found = lists.flat().find(k => k?.name === name && k?.fromSet === fromSet);
+  return cardTagsHtml(found?.tags, _esc);
+}
+
+function _statsAdditionalTags(card) {
+  return cardTagsHtml(card?.tags, _esc);
+}
+
 function statCard(value, label, color) {
   const s = color ? `style="color:${color};"` : "";
   return `<div class="stat-card"><div class="stat-value" ${s}>${value}</div><div class="stat-label">${label}</div></div>`;
 }
 
 function calcPlayerStats(playerName) {
-  let wins=0,losses=0,ties=0,totalScore=0,totalNemesis=0,normalGames=0;
-  let rivalsGames=0,rivalsWins=0,rivalsLosses=0,rivalsTies=0;
+  let wins=0,losses=0,totalScore=0,totalNemesis=0,normalGames=0;
+  let rivalsGames=0,rivalsWins=0,rivalsLosses=0;
   let crisisPlayed=0,crisisWins=0,crisisLosses=0;
-  let multiverseGames=0,multiverseWins=0,multiverseLosses=0,multiverseTies=0,multiverseVpGames=0,multiverseScoreTotal=0;
+  let multiverseGames=0,multiverseWins=0,multiverseLosses=0,multiverseVpGames=0,multiverseScoreTotal=0;
   const oversizedCount = {};
 
   App.data.history.forEach(h => {
@@ -86,12 +97,10 @@ function calcPlayerStats(playerName) {
         rivalsGames++;
         if      (p.result==="Win")  rivalsWins++;
         else if (p.result==="Loss") rivalsLosses++;
-        else if (p.result==="Tie")  rivalsTies++;
       } else if (h.isMultiverse) {
         multiverseGames++;
         if      (p.result==="Win")  multiverseWins++;
         else if (p.result==="Loss") multiverseLosses++;
-        else if (p.result==="Tie")  multiverseTies++;
         if (h.multiverseWinCondition === "brainiac" || h.multiverseWinCondition === "deimos") {
           multiverseVpGames++;
           multiverseScoreTotal += p.score || 0;
@@ -102,25 +111,24 @@ function calcPlayerStats(playerName) {
         totalNemesis += p.nemesis || 0;
         if      (p.result==="Win")  wins++;
         else if (p.result==="Loss") losses++;
-        else if (p.result==="Tie")  ties++;
       }
       const card = (p.oversizedCard||p.heroUsed||"").trim();
       if (card) oversizedCount[card]=(oversizedCount[card]||0)+1;
     });
   });
 
-  return {wins,losses,ties,totalScore,totalNemesis,normalGames,
-          rivalsGames,rivalsWins,rivalsLosses,rivalsTies,
+  return {wins,losses,totalScore,totalNemesis,normalGames,
+          rivalsGames,rivalsWins,rivalsLosses,
           crisisPlayed,crisisWins,crisisLosses,
-          multiverseGames,multiverseWins,multiverseLosses,multiverseTies,multiverseVpGames,multiverseScoreTotal,
+          multiverseGames,multiverseWins,multiverseLosses,multiverseVpGames,multiverseScoreTotal,
           oversizedCount};
 }
 
 function buildPlayerSummaryHTML(stats) {
-  const {wins,losses,ties,totalScore,totalNemesis,normalGames,
-         rivalsGames,rivalsWins,rivalsLosses,rivalsTies,
+  const {wins,losses,totalScore,totalNemesis,normalGames,
+         rivalsGames,rivalsWins,rivalsLosses,
          crisisPlayed,crisisWins,crisisLosses,
-         multiverseGames,multiverseWins,multiverseLosses,multiverseTies,multiverseVpGames,multiverseScoreTotal,
+         multiverseGames,multiverseWins,multiverseLosses,multiverseVpGames,multiverseScoreTotal,
          oversizedCount} = stats;
   const totalAll   = normalGames+rivalsGames+crisisPlayed+multiverseGames;
   const avgScore   = normalGames>0 ? (totalScore/normalGames).toFixed(1) : "—";
@@ -134,7 +142,6 @@ function buildPlayerSummaryHTML(stats) {
       ${statCard(normalGames,"Normal Games")}
       ${statCard(wins,"Wins","#22c55e")}
       ${statCard(losses,"Losses","#ef4444")}
-      ${statCard(ties,"Ties","#facc15")}
       ${statCard(avgScore,"Avg Score (VPs)")}
       ${statCard(totalNemesis,"Total Nemesis Defeated")}
       ${statCard(avgNemesis,"Avg Nemesis Defeated")}
@@ -144,7 +151,6 @@ function buildPlayerSummaryHTML(stats) {
       ${statCard(rivalsGames,"Played")}
       ${statCard(rivalsWins,"Wins","#22c55e")}
       ${statCard(rivalsLosses,"Losses","#ef4444")}
-      ${statCard(rivalsTies,"Ties","#facc15")}
     </div>
     <h4 class="stats-section-label" style="margin-top:16px;">Crisis Games</h4>
     <div class="stats-grid">
@@ -157,7 +163,6 @@ function buildPlayerSummaryHTML(stats) {
       ${statCard(multiverseGames,"Played")}
       ${statCard(multiverseWins,"Wins","#22c55e")}
       ${statCard(multiverseLosses,"Losses","#ef4444")}
-      ${statCard(multiverseTies,"Ties","#facc15")}
       ${statCard(multiverseVpGames ? (multiverseScoreTotal / multiverseVpGames).toFixed(1) : "—","Avg VP End Score")}
     </div>
     ${topCards.length ? `
@@ -282,9 +287,9 @@ function renderPlayerStats() {
     _clearChartUnavailable("statsChart");
     chartPlayerInstance = new Chart(document.getElementById("statsChart"), {
       type:"bar",
-      data:{ labels:["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L","Multi W","Multi L"],
-        datasets:[{ data:[stats.wins,stats.losses,stats.ties,stats.rivalsWins,stats.rivalsLosses,stats.crisisWins,stats.crisisLosses,stats.multiverseWins,stats.multiverseLosses],
-          backgroundColor:["#22c55e","#ef4444","#facc15","#a78bfa","#c084fc","#34d399","#f87171","#10b981","#fb7185"], borderRadius:4 }] },
+      data:{ labels:["W","L","Rivals W","Rivals L","Crisis W","Crisis L","Multi W","Multi L"],
+        datasets:[{ data:[stats.wins,stats.losses,stats.rivalsWins,stats.rivalsLosses,stats.crisisWins,stats.crisisLosses,stats.multiverseWins,stats.multiverseLosses],
+          backgroundColor:["#22c55e","#ef4444","#a78bfa","#c084fc","#34d399","#f87171","#10b981","#fb7185"], borderRadius:4 }] },
       options:_smallChartOpts(cc, false),
     });
   }
@@ -306,7 +311,7 @@ function handleComparePlayerChange(input) {
 }
 
 function _renderCompare(players, cc) {
-  const labels = ["W","L","T","Rivals W","Rivals L","Crisis W","Crisis L","Multi W","Multi L"];
+  const labels = ["W","L","Rivals W","Rivals L","Crisis W","Crisis L","Multi W","Multi L"];
   const colors = ["#3b82f6", "#f59e0b", "#22c55e", "#a855f7", "#ef4444"];
   const stats = players.map(p => ({ name: p, stats: calcPlayerStats(p) }));
 
@@ -321,7 +326,7 @@ function _renderCompare(players, cc) {
     data:{ labels,
       datasets:stats.map((entry, i) => ({
         label:entry.name,
-        data:[entry.stats.wins,entry.stats.losses,entry.stats.ties,entry.stats.rivalsWins,entry.stats.rivalsLosses,entry.stats.crisisWins,entry.stats.crisisLosses,entry.stats.multiverseWins,entry.stats.multiverseLosses],
+        data:[entry.stats.wins,entry.stats.losses,entry.stats.rivalsWins,entry.stats.rivalsLosses,entry.stats.crisisWins,entry.stats.crisisLosses,entry.stats.multiverseWins,entry.stats.multiverseLosses],
         backgroundColor:colors[i % colors.length],
         borderRadius:3,
       }))},
@@ -333,8 +338,8 @@ function _pct(wins, games) {
   return games > 0 ? `${Math.round((wins / games) * 100)}%` : "—";
 }
 
-function _wlSummary(wins, losses, ties) {
-  return ties ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
+function _wlSummary(wins, losses) {
+  return `${wins}-${losses}`;
 }
 
 function _avg(total, games) {
@@ -350,18 +355,18 @@ function _buildCompareTable(entries, colors) {
   const rows = [
     ["Total Games", s => s.normalGames + s.rivalsGames + s.crisisPlayed + s.multiverseGames],
     ["Normal", s => s.normalGames],
-    ["Normal W-L-T", s => _wlSummary(s.wins, s.losses, s.ties)],
+    ["Normal W-L", s => _wlSummary(s.wins, s.losses)],
     ["Normal Win %", s => _pct(s.wins, s.normalGames)],
     ["Avg Score", s => _avg(s.totalScore, s.normalGames)],
     ["Avg Nemesis", s => _avg(s.totalNemesis, s.normalGames)],
     ["Rivals", s => s.rivalsGames],
-    ["Rivals W-L-T", s => _wlSummary(s.rivalsWins, s.rivalsLosses, s.rivalsTies)],
+    ["Rivals W-L", s => _wlSummary(s.rivalsWins, s.rivalsLosses)],
     ["Rivals Win %", s => _pct(s.rivalsWins, s.rivalsGames)],
     ["Crisis", s => s.crisisPlayed],
     ["Crisis W-L", s => `${s.crisisWins}-${s.crisisLosses}`],
     ["Crisis Win %", s => _pct(s.crisisWins, s.crisisPlayed)],
     ["Multiverse", s => s.multiverseGames],
-    ["Multiverse W-L-T", s => _wlSummary(s.multiverseWins, s.multiverseLosses, s.multiverseTies)],
+    ["Multiverse W-L", s => _wlSummary(s.multiverseWins, s.multiverseLosses)],
     ["Multiverse Win %", s => _pct(s.multiverseWins, s.multiverseGames)],
     ["Top Oversized", s => _topOversized(s)],
   ];
@@ -425,8 +430,6 @@ function renderGameStats() {
   // Tally card usage across all history
   const oversizedUsage = {};
   const additionalUsage = {};
-  const multiverseLocationUsage = {};
-  const multiverseChampionUsage = {};
   data.history.forEach(h => {
     h.players.forEach(p => {
       const card    = (p.oversizedCard || p.heroUsed  || "").trim();
@@ -436,29 +439,25 @@ function renderGameStats() {
         if (!oversizedUsage[key]) oversizedUsage[key] = { name: card, fromSet, count: 0 };
         oversizedUsage[key].count++;
       }
-      if (h.isMultiverse && p.multiverseLocation) {
-        const locKey = p.multiverseLocation;
-        if (!multiverseLocationUsage[locKey]) multiverseLocationUsage[locKey] = { name: locKey, count: 0 };
-        multiverseLocationUsage[locKey].count++;
-      }
-      if (h.isMultiverse) {
-        (p.multiverseChampions || []).forEach(ch => {
-          const chName = (ch.name || "").trim();
-          if (!chName) return;
-          const chKey = chName;
-          if (!multiverseChampionUsage[chKey]) multiverseChampionUsage[chKey] = { name: chName, fromSet: ch.fromSet || ch.set || "", count: 0 };
-          multiverseChampionUsage[chKey].count++;
-        });
-      }
+      (p.multiverseChampions || []).forEach(ch => {
+        const chName = (ch.name || "").trim();
+        const chFromSet = (ch.fromSet || ch.set || "").trim();
+        if (!chName) return;
+        const key = `${chName}||${chFromSet}`;
+        if (!oversizedUsage[key]) oversizedUsage[key] = { name: chName, fromSet: chFromSet, count: 0 };
+        oversizedUsage[key].count++;
+      });
     });
     (h.additional || []).forEach(c => {
       if (isMultiverseLocationCard(c)) return;
       const name = (typeof c === "string" ? c : c.name || "").trim();
       const set = (typeof c === "string" ? "Other" : c.set || c.type || "Other").trim() || "Other";
       const cardType = (typeof c === "string" ? "Hero" : c.cardType || "Hero").trim() || "Hero";
+      const tags = typeof c === "string" ? [] : normalizeCardTags(c.tags);
       if (name) {
         const key = `${name}||${set}`;
-        if (!additionalUsage[key]) additionalUsage[key] = { name, set, cardType, count: 0 };
+        if (!additionalUsage[key]) additionalUsage[key] = { name, set, cardType, tags: [], count: 0 };
+        additionalUsage[key].tags = normalizeCardTags([...(additionalUsage[key].tags || []), ...tags]);
         additionalUsage[key].count++;
       }
     });
@@ -479,8 +478,6 @@ function renderGameStats() {
   const crE = Object.entries(crisisMap).filter(([,s]) => s.crisis > 0);
   const ovArr = Object.values(oversizedUsage);
   const addArr = Object.values(additionalUsage);
-  const mvLocArr = Object.values(multiverseLocationUsage);
-  const mvChampArr = Object.values(multiverseChampionUsage);
 
   // Sort: By Base Game
   const sortedGE = [...gE].sort((a, b) => {
@@ -514,12 +511,15 @@ function renderGameStats() {
   // Top 10 oversized cards: fixed sort by most-used first
   const sortedOv = [...ovArr].sort((a, b) => b.count - a.count).slice(0, 10);
   const sortedAdd = [...addArr].sort((a, b) => b.count - a.count).slice(0, 10);
-  const sortedMvLoc = [...mvLocArr].sort((a, b) => b.count - a.count).slice(0, 10);
-  const sortedMvChamp = [...mvChampArr].sort((a, b) => b.count - a.count).slice(0, 10);
 
   // Shared heading + table styles for consistent spacing
   const sectionHead = (title, sub) =>
     `<h4 class="stats-section-label" style="margin-top:20px;">${title}${sub ? `<span class="stats-sub-label">${sub}</span>` : ""}</h4>`;
+
+  _destroyChart(chartGameInstance); chartGameInstance=null;
+  _destroyChart(chartCrisisInstance); chartCrisisInstance=null;
+  _destroyChart(chartTopOversizedInstance); chartTopOversizedInstance=null;
+  _destroyChart(chartTopAdditionalInstance); chartTopAdditionalInstance=null;
 
   document.getElementById("gameStatsSummary").innerHTML = `
     <h4 class="stats-section-label">Overall</h4>
@@ -529,9 +529,16 @@ function renderGameStats() {
       ${statCard(tR,"Rivals Games")}
       ${statCard(tC,"Crisis Games")}
       ${statCard(tM,"Multiverse Games")}
-      ${statCard(tCW,"Crisis Wins","#22c55e")}
-      ${statCard(tCL,"Crisis Losses","#ef4444")}
     </div>
+
+    ${tC ? `
+    ${sectionHead("Crisis Summary")}
+    <div class="stats-grid">
+      ${statCard(tC,"Crisis Games")}
+      ${statCard(tCW,"Wins","#22c55e")}
+      ${statCard(tCL,"Losses","#ef4444")}
+      ${statCard(Math.round(tCW / tC * 100) + "%","Win Rate")}
+    </div>` : ""}
 
     ${tM ? `
     ${sectionHead("Multiverse Endings")}
@@ -549,7 +556,8 @@ function renderGameStats() {
         <th class="sortable" onclick="sortGameBy('count')">Normal Games ${_sortInd(_sortGame,'count')}</th>
       </tr></thead>
       <tbody>${sortedGE.map(([n,s])=>`<tr><td>${_esc(n)}${_sGameTag(n)}</td><td>${_esc(s.normal)}</td></tr>`).join("")}</tbody>
-    </table>` : ""}
+    </table>
+    <div class="stats-chart-wrap"><canvas id="gameStatsChart" style="max-height:180px;"></canvas></div>` : ""}
 
     ${rE.length ? `
     ${sectionHead("By Rivals Base Game")}
@@ -601,11 +609,11 @@ function renderGameStats() {
           <td style="color:${rateColor};font-weight:600;">${_esc(rate)}%</td>
         </tr>`;
       }).join("")}</tbody>
-    </table>` : ""}
+    </table>
+    <div class="stats-chart-wrap"><canvas id="crisisStatsChart" style="max-height:180px;"></canvas></div>` : ""}
 
     ${ovArr.length ? `
     ${sectionHead("Top 10 Most Used Oversized Cards")}
-    <div class="stats-chart-wrap"><canvas id="topOversizedChart" style="max-height:260px;"></canvas></div>
     <table class="stats-table">
       <thead><tr>
         <th style="color:var(--text-dim);font-size:11px;width:32px;">#</th>
@@ -615,15 +623,15 @@ function renderGameStats() {
       </tr></thead>
       <tbody>${sortedOv.map((o, idx)=>`<tr>
         <td style="color:var(--text-dim);font-size:11px;">${idx+1}</td>
-        <td>${_esc(o.name)}${_sOversizedTag(o.name, o.fromSet)}</td>
+        <td>${_esc(o.name)}${_statsOversizedTags(o.name, o.fromSet)}${_sOversizedTag(o.name, o.fromSet)}</td>
         <td style="color:var(--text-dim);font-size:12px;">${_esc(o.fromSet||"—")}</td>
         <td style="font-weight:600;">${_esc(o.count)}</td>
       </tr>`).join("")}</tbody>
-    </table>` : ""}
+    </table>
+    <div class="stats-chart-wrap"><canvas id="topOversizedChart" style="max-height:260px;"></canvas></div>` : ""}
 
     ${addArr.length ? `
     ${sectionHead("Top 10 Most Used Additional Cards")}
-    <div class="stats-chart-wrap"><canvas id="topAdditionalChart" style="max-height:260px;"></canvas></div>
     <table class="stats-table">
       <thead><tr>
         <th style="color:var(--text-dim);font-size:11px;width:32px;">#</th>
@@ -634,32 +642,18 @@ function renderGameStats() {
       </tr></thead>
       <tbody>${sortedAdd.map((c, idx)=>`<tr>
         <td style="color:var(--text-dim);font-size:11px;">${idx+1}</td>
-        <td>${_esc(c.name)}${_sCardTag(c.name, c.set)}</td>
+        <td>${_esc(c.name)}${_statsAdditionalTags(c)}${_sCardTag(c.name, c.set)}</td>
         <td style="color:var(--text-dim);font-size:12px;">${_esc(c.set||"Other")}</td>
         <td style="color:var(--text-dim);font-size:12px;">${_esc(c.cardType||"Hero")}</td>
         <td style="font-weight:600;">${_esc(c.count)}</td>
       </tr>`).join("")}</tbody>
-    </table>` : ""}
+    </table>
+    <div class="stats-chart-wrap"><canvas id="topAdditionalChart" style="max-height:260px;"></canvas></div>` : ""}
 
-    ${mvLocArr.length ? `
-    ${sectionHead("Top 10 Multiverse Locations")}
-    <table class="stats-table">
-      <thead><tr><th>#</th><th>Location</th><th>Times Used</th></tr></thead>
-      <tbody>${sortedMvLoc.map((c, idx)=>`<tr><td>${idx+1}</td><td>${_esc(c.name)}</td><td style="font-weight:600;">${_esc(c.count)}</td></tr>`).join("")}</tbody>
-    </table>` : ""}
-
-    ${mvChampArr.length ? `
-    ${sectionHead("Top 10 Multiverse Champions")}
-    <table class="stats-table">
-      <thead><tr><th>#</th><th>Champion</th><th>From Set</th><th>Times Used</th></tr></thead>
-      <tbody>${sortedMvChamp.map((c, idx)=>`<tr><td>${idx+1}</td><td>${_esc(c.name)}</td><td>${_esc(c.fromSet || "—")}</td><td style="font-weight:600;">${_esc(c.count)}</td></tr>`).join("")}</tbody>
-    </table>` : ""}
   `;
 
-  _destroyChart(chartGameInstance); chartGameInstance=null;
-  _destroyChart(chartTopOversizedInstance); chartTopOversizedInstance=null;
-  _destroyChart(chartTopAdditionalInstance); chartTopAdditionalInstance=null;
   if (!_chartsAvailable()) {
+    if (tC) _showChartUnavailable("crisisStatsChart");
     if (gE.length) _showChartUnavailable("gameStatsChart");
     if (sortedOv.length) _showChartUnavailable("topOversizedChart");
     if (sortedAdd.length) _showChartUnavailable("topAdditionalChart");
@@ -670,12 +664,28 @@ function renderGameStats() {
     const cc2 = _chartColors();
     chartGameInstance = new Chart(document.getElementById("gameStatsChart"), {
       type:"bar",
-      data:{ labels:gE.map(([n])=>n),
-        datasets:[{ label:"Normal Games", data:gE.map(([,s])=>s.normal), backgroundColor:_chartPalette(gE.length), borderRadius:3 }] },
-      options:_smallChartOpts(cc2, true),
+      data:{ labels:sortedGE.map(([n])=>n),
+        datasets:[{ label:"Normal Games", data:sortedGE.map(([,s])=>s.normal), backgroundColor:_chartPalette(sortedGE.length), borderRadius:3 }] },
+      options:_smallChartOpts(cc2, false),
     });
   }
   const cc2 = _chartColors();
+  if (tC) {
+    _clearChartUnavailable("crisisStatsChart");
+    chartCrisisInstance = new Chart(document.getElementById("crisisStatsChart"), {
+      type:"bar",
+      data:{
+        labels:["Wins", "Losses"],
+        datasets:[{
+          label:"Crisis Games",
+          data:[tCW, tCL],
+          backgroundColor:["#22c55e", "#ef4444"],
+          borderRadius:3,
+        }],
+      },
+      options:_smallChartOpts(cc2, false),
+    });
+  }
   if (sortedOv.length) {
     _clearChartUnavailable("topOversizedChart");
     chartTopOversizedInstance = new Chart(document.getElementById("topOversizedChart"), {

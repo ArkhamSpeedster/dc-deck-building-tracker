@@ -17,7 +17,7 @@
 <div id="drawerOverlay" onclick="closeDrawer()"></div>
 
 <header>
-  <h1>DeckLedger</h1>
+  <button class="brand-btn" onclick="showPage('homePage')" aria-label="Go to homepage">DeckLedger</button>
   <div class="header-right">
     <button class="header-btn" onclick="showPage('homePage')" title="Home">Home</button>
     <button class="header-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch color theme">Switch to Dark</button>
@@ -43,7 +43,7 @@
 <main class="page active" id="homePage">
   <div class="home-hero card">
     <h2 class="home-title">DeckLedger</h2>
-    <p class="home-version">Beta · Version <span id="homeAppVersion">0.9.1-beta</span></p>
+    <p class="home-version">Beta · Version <span id="homeAppVersion">0.9.2-beta</span></p>
     <p class="home-subtitle">An unofficial companion and statistics tracker for the DC Deck-Building Game created by <a href="https://cryptozoic.com/" target="_blank" rel="noopener noreferrer">Cryptozoic Entertainment</a>.</p>
 
     <!-- Quick nav sits right under the hero tagline -->
@@ -158,6 +158,13 @@
     <button class="primary" id="addPlayerBtn" onclick="addPlayerToGame()">+ Add Player</button>
   </div>
 
+  <div class="card" id="standardTieBreakerFields" style="display:none;">
+    <h4 style="margin-top:0;">Final Tie-Breaker</h4>
+    <p class="hint">VP and Nemesis defeated are still tied for first. Choose the tied player who most recently defeated a Super-Villain.</p>
+    <label for="standardTieBreakerSelect">Most recent Super-Villain defeated by:</label>
+    <select id="standardTieBreakerSelect" onchange="_markGameDirty();"></select>
+  </div>
+
   <div class="card" id="multiverseFields" style="display:none;">
     <h4 style="margin-top:0;">Multiverse Variant</h4>
     <p class="hint">Choose the base set setup, Multiverse ending, and events used. World Hopper requires at least two actual base sets.</p>
@@ -248,7 +255,6 @@
     </div>
     <div class="collapsible-body" id="gameStatsBody">
       <div id="gameStatsSummary" style="margin-top:12px;"></div>
-      <div style="max-width:480px;margin:12px auto 0;"><canvas id="gameStatsChart" style="max-height:160px;"></canvas></div>
     </div>
   </div>
 

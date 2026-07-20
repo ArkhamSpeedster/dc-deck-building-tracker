@@ -3,8 +3,13 @@
  */
 
 const DEFAULT_ADMIN_CARD_FILTER = "Original Core Set (2012)";
-let _adminCardTypeFilter     = localStorage.getItem("dcAdminCardFilter")      || DEFAULT_ADMIN_CARD_FILTER;
-let _adminOversizedSetFilter = localStorage.getItem("dcAdminOversizedFilter") || "";
+const DEFAULT_ADMIN_OVERSIZED_FILTER = "Original Core Set (2012)";
+function _storedAdminFilter(key, fallback) {
+  const stored = localStorage.getItem(key);
+  return stored == null ? fallback : stored;
+}
+let _adminCardTypeFilter     = _storedAdminFilter("dcAdminCardFilter", DEFAULT_ADMIN_CARD_FILTER);
+let _adminOversizedSetFilter = _storedAdminFilter("dcAdminOversizedFilter", DEFAULT_ADMIN_OVERSIZED_FILTER);
 
 /* ===== Init ===== */
 function initAdminDraft() {
@@ -45,8 +50,8 @@ function renderAdmin() {
 }
 
 function syncAdminFilterPreferences() {
-  _adminCardTypeFilter     = localStorage.getItem("dcAdminCardFilter")      || DEFAULT_ADMIN_CARD_FILTER;
-  _adminOversizedSetFilter = localStorage.getItem("dcAdminOversizedFilter") || "";
+  _adminCardTypeFilter     = _storedAdminFilter("dcAdminCardFilter", DEFAULT_ADMIN_CARD_FILTER);
+  _adminOversizedSetFilter = _storedAdminFilter("dcAdminOversizedFilter", DEFAULT_ADMIN_OVERSIZED_FILTER);
 }
 
 function renderDataVersionNotice() {
@@ -90,12 +95,6 @@ function _adminStartEdit(btn, sectionKey, idx) {
 
   // Enable any disabled controls (checkboxes, selects) while in edit mode
   row.querySelectorAll("input[type=checkbox], select").forEach(el => el.disabled = false);
-  // Prevent checkboxes (and their labels) from stealing focus away from the text input
-  row.querySelectorAll("input[type=checkbox]").forEach(chk => {
-    chk.addEventListener("mousedown", e => e.preventDefault());
-    const lbl = chk.closest("label");
-    if (lbl) lbl.addEventListener("mousedown", e => e.preventDefault());
-  });
 
   const originalVal = staticEl.dataset.emptyName === "true"
     ? ""
@@ -112,6 +111,11 @@ function _adminStartEdit(btn, sectionKey, idx) {
   input.select();
 
   let committed = false;
+  let pointerStartedInsideRow = false;
+  row.addEventListener("pointerdown", e => {
+    pointerStartedInsideRow = row.contains(e.target);
+    setTimeout(() => { pointerStartedInsideRow = false; }, 0);
+  });
 
   function _metaSelect() {
     return row.querySelector("select");
@@ -177,6 +181,7 @@ function _adminStartEdit(btn, sectionKey, idx) {
 
   // Commit when focus leaves the row entirely (not just moving to type/set select within it)
   row.addEventListener("focusout", e => {
+    if (pointerStartedInsideRow) return;
     if (!row.contains(e.relatedTarget)) commit();
   });
   input.addEventListener("keydown", e => {
@@ -381,9 +386,9 @@ function saveAdminChanges() {
   App.data.players        = App.adminDraft.players;
   App.data.games          = App.adminDraft.games;
   App.data.crossovers     = App.adminDraft.crossovers;
-  App.data.knownCards     = App.adminDraft.knownCards;
+  App.data.knownCards     = App.adminDraft.knownCards.map(c => ({ ...c, tags: normalizeCardTags(c.tags) }));
   App.data.cardTypes      = App.adminDraft.cardTypes.sort(naturalCompare);
-  App.data.knownOversized = App.adminDraft.knownOversized;
+  App.data.knownOversized = App.adminDraft.knownOversized.map(c => ({ ...c, tags: normalizeCardTags(c.tags) }));
 
   const newPlayers = App.data.players;
   App.data.defaultSlot1 = (newSlot1 && newPlayers.includes(newSlot1)) ? newSlot1 : null;
@@ -650,6 +655,7 @@ function renderAdminArchived() {
         <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
         <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.set || "Other")}</span>
         <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.cardType || "Hero")}</span>
+        ${cardTagsHtml(entry.tags, _ae)}
         <span class="archived-badge">archived</span>
         ${alreadyActive
           ? `<span style="font-size:12px;color:var(--text-dim);">Active card has this name/set</span>`
@@ -668,6 +674,7 @@ function renderAdminArchived() {
       row.innerHTML = `
         <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
         <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.fromSet || "")}</span>
+        ${cardTagsHtml(entry.tags, _ae)}
         <span class="archived-badge">archived</span>
         ${alreadyActive
           ? `<span style="font-size:12px;color:var(--text-dim);">Active card has this name/set</span>`
@@ -697,16 +704,12 @@ function renderAdminGames() {
   [...App.adminDraft.games]
     .sort((a, b) => (a.name === "Original Core Set (2012)" ? -1 : b.name === "Original Core Set (2012)" ? 1 : naturalCompare(a.name, b.name)))
     .forEach((g, i) => {
-    const rivalsChars = g.rivalsCharacters || ["", ""];
     const row = document.createElement("div");
     row.className = "admin-row";
     row.innerHTML = `
       <span class="admin-static">${_ae(g.name)}</span>
       ${g.isRivals ? `<span class="admin-lock-badge admin-rivals-badge">Rivals</span>` : ""}
-      ${g.isRivals ? `
-        <span class="hero-tag">${_ae(rivalsChars[0] || "Hero 1")}</span>
-        <span class="hero-tag">${_ae(rivalsChars[1] || "Hero 2")}</span>
-      ` : ""}
+      ${g.comingSoon ? `<span class="admin-lock-badge">${g.name === "Rebirth (2019)" ? "App Update Coming Soon" : "Coming Soon"}</span>` : ""}
       <span style="font-size:12px;color:var(--text-dim);margin-left:auto;">Managed</span>
     `;
       gDiv.appendChild(row);
@@ -882,10 +885,14 @@ function renderAdminKnownCards() {
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Card Type:</label>
       ${protectedCard
         ? `<span class="admin-static admin-card-type admin-default-text">${_ae(c.cardType || "")}</span>
+           <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Tags:</label>
+           <span class="admin-static admin-card-tags">${_adminTagBadges(c.tags)}</span>
            <span class="admin-lock-badge admin-required-badge">🔒 Default</span>
            <button class="danger" onclick="_adminConfirmBanCard(this, ${origIdx})">Ban</button>
            <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Archive</button>`
         : `<select disabled onchange="draftUpdateKnownCardType(${origIdx},this.value); markAdminDirty();" class="${!c.cardType ? 'placeholder-selected' : ''}">${cardTypeOptions}</select>
+           <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Tags:</label>
+           ${_adminTagControls(c.tags, "cards", origIdx, true)}
            <button class="secondary" onclick="_adminStartEdit(this,'cards',${origIdx})">Edit</button>
            <button class="danger" onclick="_adminConfirmBanCard(this, ${origIdx})">Ban</button>
            <button class="danger" onclick="_adminConfirmRemoveKnownCard(this, ${origIdx})">Archive</button>
@@ -903,7 +910,7 @@ function _adminConfirmRemoveKnownCard(btn, i) {
 function draftAddKnownCard() {
   _adminCardTypeFilter = DEFAULT_ADMIN_CARD_FILTER;
   localStorage.setItem("dcAdminCardFilter", DEFAULT_ADMIN_CARD_FILTER);
-  App.adminDraft.knownCards.push({ name: "", set: DEFAULT_ADMIN_CARD_FILTER, cardType: "Hero" });
+  App.adminDraft.knownCards.push({ name: "", set: DEFAULT_ADMIN_CARD_FILTER, cardType: "Hero", tags: [] });
   markAdminDirty(); renderAdminKnownCards();
   _autoEditLastRow("adminKnownCards");
 }
@@ -917,7 +924,7 @@ function draftRemoveKnownCard(i) {
   if (c && c.name) {
     App.data.archivedCards = App.data.archivedCards || [];
     if (!App.data.archivedCards.some(k => k.name === c.name && k.set === c.set)) {
-      App.data.archivedCards.push({ name: c.name, set: c.set, cardType: c.cardType });
+      App.data.archivedCards.push({ name: c.name, set: c.set, cardType: c.cardType, tags: normalizeCardTags(c.tags) });
     }
   }
   App.adminDraft.knownCards.splice(i, 1); markAdminDirty(); renderAdminKnownCards(); renderAdminArchived();
@@ -942,7 +949,7 @@ function draftDeleteKnownCard(i) {
   App.data.bannedCards = (App.data.bannedCards || []).filter(k => !(k.name === c.name && k.set === c.set));
   App.data.removedCards = App.data.removedCards || [];
   if (!App.data.removedCards.some(k => _adminCardIdentityMatches(k, c.name, c.set))) {
-    App.data.removedCards.push({ name: c.name, set: c.set || "Other", cardType: c.cardType || "Hero" });
+    App.data.removedCards.push({ name: c.name, set: c.set || "Other", cardType: c.cardType || "Hero", tags: normalizeCardTags(c.tags) });
   }
   markAdminDirty(); renderAdminKnownCards(); renderAdminArchived(); renderAdminBannedCards();
 }
@@ -957,7 +964,7 @@ function draftBanCard(i) {
   if (c && c.name) {
     App.data.bannedCards = App.data.bannedCards || [];
     if (!App.data.bannedCards.some(k => k.name === c.name && k.set === c.set)) {
-      App.data.bannedCards.push({ name: c.name, set: c.set, cardType: c.cardType });
+      App.data.bannedCards.push({ name: c.name, set: c.set, cardType: c.cardType, tags: normalizeCardTags(c.tags) });
     }
   }
   App.adminDraft.knownCards.splice(i, 1); markAdminDirty(); renderAdminKnownCards(); renderAdminBannedCards();
@@ -986,6 +993,7 @@ function renderAdminBannedCards() {
       row.innerHTML = `
         <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
         <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.fromSet || "")}</span>
+        ${cardTagsHtml(entry.tags, _ae)}
         <span class="banned-badge">banned</span>
         ${alreadyActive
           ? `<span style="font-size:12px;color:var(--text-dim);">Active card has this name/set</span>`
@@ -1007,6 +1015,7 @@ function renderAdminBannedCards() {
         <span style="flex:1;padding:4px 6px;">${_ae(entry.name)}</span>
         <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.set || "Other")}</span>
         <span style="font-size:12px;color:var(--text-dim);">${_ae(entry.cardType || "Hero")}</span>
+        ${cardTagsHtml(entry.tags, _ae)}
         <span class="banned-badge">banned</span>
         ${alreadyActive
           ? `<span style="font-size:12px;color:var(--text-dim);">Active card has this name/set</span>`
@@ -1024,7 +1033,7 @@ function unbanCard(i) {
     showToast(`"${entry.name}" (${entry.set || entry.type || "Other"}) matches an active card. Rename the active card first, or use another set.`, "error"); return;
   }
   App.data.bannedCards.splice(i, 1);
-  App.adminDraft.knownCards.push({ name: entry.name, set: entry.set || "Other", cardType: entry.cardType || "Hero" });
+  App.adminDraft.knownCards.push({ name: entry.name, set: entry.set || "Other", cardType: entry.cardType || "Hero", tags: normalizeCardTags(entry.tags) });
   markAdminDirty(); renderAdminKnownCards(); renderAdminBannedCards();
 }
 
@@ -1037,9 +1046,37 @@ function _adminAllSets() {
   const named = [
     ...App.adminDraft.games.map(g => g.name).filter(Boolean),
     ...App.adminDraft.crossovers.filter(c => c.name && c.name !== "None").map(c => c.name),
-    "Promo",
   ].sort(naturalCompare);
   return [...named, "Other"];
+}
+
+function _adminTagBadges(tags) {
+  const html = cardTagsHtml(tags, _ae);
+  return html || `<span style="font-size:12px;color:var(--text-dim);">—</span>`;
+}
+
+function _adminTagControls(tags, kind, idx, disabled) {
+  const current = normalizeCardTags(tags);
+  return `<div class="admin-tag-controls">
+    ${DEFAULT_CARD_TAGS.map(tag => `
+      <label class="admin-tag-check">
+        <input type="checkbox" value="${_ae(tag)}" ${disabled ? "disabled" : ""} ${current.includes(tag) ? "checked" : ""}
+          onchange="draftToggleCardTag('${kind}', ${idx}, '${tag}', this.checked)">
+        <span>${_ae(cardTagLabel(tag))}</span>
+      </label>
+    `).join("")}
+  </div>`;
+}
+
+function draftToggleCardTag(kind, idx, tag, checked) {
+  const list = kind === "cards" ? App.adminDraft.knownCards : App.adminDraft.knownOversized;
+  const item = list?.[idx];
+  if (!item) return;
+  const current = new Set(normalizeCardTags(item.tags));
+  if (checked) current.add(tag);
+  else current.delete(tag);
+  item.tags = normalizeCardTags([...current]);
+  markAdminDirty();
 }
 
 function _setAdminOversizedFilter(setName) {
@@ -1054,8 +1091,8 @@ function renderAdminKnownOversized() {
   const cards   = App.adminDraft.knownOversized;
   const allSets = _adminAllSets();
   if (_adminOversizedSetFilter && !allSets.includes(_adminOversizedSetFilter)) {
-    _adminOversizedSetFilter = "";
-    localStorage.setItem("dcAdminOversizedFilter", "");
+    _adminOversizedSetFilter = DEFAULT_ADMIN_OVERSIZED_FILTER;
+    localStorage.setItem("dcAdminOversizedFilter", DEFAULT_ADMIN_OVERSIZED_FILTER);
   }
 
   // Filter bar — set dropdown
@@ -1106,6 +1143,10 @@ function renderAdminKnownOversized() {
       <span class="admin-static admin-card-name${protectedCard ? " admin-default-text" : ""}">${_ae(c.name)}</span>
       <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Set:</label>
       ${setField}
+      <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Tags:</label>
+      ${protectedCard
+        ? `<span class="admin-static admin-card-tags">${_adminTagBadges(c.tags)}</span>`
+        : _adminTagControls(c.tags, "oversized", origIdx, true)}
       ${protectedCard ? `<span class="admin-lock-badge admin-required-badge">🔒 Default</span>
         <button class="danger" onclick="_adminConfirmBanOversized(this, ${origIdx})">Ban</button>
         <button class="danger" onclick="_adminConfirmRemoveOversized(this, ${origIdx})">Archive</button>` : `
@@ -1125,9 +1166,8 @@ function _adminConfirmRemoveOversized(btn, i) {
 }
 
 function draftAddOversized() {
-  _adminOversizedSetFilter = ""; // reset filter so new card is visible
-  localStorage.setItem("dcAdminOversizedFilter", "");
-  App.adminDraft.knownOversized.push({ name: "", fromSet: "" });
+  const fromSet = _adminOversizedSetFilter || DEFAULT_ADMIN_OVERSIZED_FILTER;
+  App.adminDraft.knownOversized.push({ name: "", fromSet, tags: [] });
   markAdminDirty(); renderAdminKnownOversized();
   _autoEditLastRow("adminKnownOversized");
 }
@@ -1140,7 +1180,7 @@ function draftRemoveOversized(i) {
   if (c && c.name) {
     App.data.archivedOversized = App.data.archivedOversized || [];
     if (!App.data.archivedOversized.some(k => k.name === c.name && k.fromSet === c.fromSet)) {
-      App.data.archivedOversized.push({ name: c.name, fromSet: c.fromSet });
+      App.data.archivedOversized.push({ name: c.name, fromSet: c.fromSet, tags: normalizeCardTags(c.tags) });
     }
   }
   App.adminDraft.knownOversized.splice(i, 1); markAdminDirty(); renderAdminKnownOversized(); renderAdminArchived();
@@ -1169,7 +1209,7 @@ function draftDeleteOversized(i) {
   App.data.bannedOversized = (App.data.bannedOversized || []).filter(k => !(k.name === c.name && k.fromSet === c.fromSet));
   App.data.removedOversized = App.data.removedOversized || [];
   if (!App.data.removedOversized.some(k => _adminOversizedIdentityMatches(k, c.name, c.fromSet))) {
-    App.data.removedOversized.push({ name: c.name, fromSet: c.fromSet || "" });
+    App.data.removedOversized.push({ name: c.name, fromSet: c.fromSet || "", tags: normalizeCardTags(c.tags) });
   }
   markAdminDirty(); renderAdminKnownOversized(); renderAdminArchived(); renderAdminBannedCards();
 }
@@ -1184,7 +1224,7 @@ function draftBanOversized(i) {
   if (c && c.name) {
     App.data.bannedOversized = App.data.bannedOversized || [];
     if (!App.data.bannedOversized.some(k => k.name === c.name && k.fromSet === c.fromSet)) {
-      App.data.bannedOversized.push({ name: c.name, fromSet: c.fromSet });
+      App.data.bannedOversized.push({ name: c.name, fromSet: c.fromSet, tags: normalizeCardTags(c.tags) });
     }
   }
   App.adminDraft.knownOversized.splice(i, 1); markAdminDirty(); renderAdminKnownOversized(); renderAdminBannedCards();
@@ -1197,7 +1237,7 @@ function unbanOversized(i) {
     showToast(`"${entry.name}" (${entry.fromSet}) matches an active oversized card. Rename the active card first, or use another set.`, "error"); return;
   }
   App.data.bannedOversized.splice(i, 1);
-  App.adminDraft.knownOversized.push({ name: entry.name, fromSet: entry.fromSet });
+  App.adminDraft.knownOversized.push({ name: entry.name, fromSet: entry.fromSet, tags: normalizeCardTags(entry.tags) });
   markAdminDirty(); renderAdminKnownOversized(); renderAdminBannedCards();
 }
 
@@ -1260,7 +1300,7 @@ function unarchiveCard(i) {
     showToast(`"${entry.name}" (${entry.set || entry.type || "Other"}) matches an active card. Rename the active card first, or use another set.`, "error"); return;
   }
   App.data.archivedCards.splice(i, 1);
-  App.adminDraft.knownCards.push({ name: entry.name, set: entry.set || "Other", cardType: entry.cardType || "Hero" });
+  App.adminDraft.knownCards.push({ name: entry.name, set: entry.set || "Other", cardType: entry.cardType || "Hero", tags: normalizeCardTags(entry.tags) });
   markAdminDirty(); renderAdminKnownCards(); renderAdminArchived();
 }
 
@@ -1271,7 +1311,7 @@ function unarchiveOversized(i) {
     showToast(`"${entry.name}" (${entry.fromSet}) matches an active oversized card. Rename the active card first, or use another set.`, "error"); return;
   }
   App.data.archivedOversized.splice(i, 1);
-  App.adminDraft.knownOversized.push({ name: entry.name, fromSet: entry.fromSet });
+  App.adminDraft.knownOversized.push({ name: entry.name, fromSet: entry.fromSet, tags: normalizeCardTags(entry.tags) });
   markAdminDirty(); renderAdminKnownOversized(); renderAdminArchived();
 }
 
